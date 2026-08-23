@@ -1,6 +1,6 @@
 import{useEffect,useMemo,useState}from'react';import Icon from'./components/Icon';import{useAppStore}from'./store/useAppStore';import{seed}from'./domain/seed';import type{KnowledgeItem,LearningArea,Skill}from'./domain/types';
 type Page='Dashboard'|'Today'|'Learning'|'Skills'|'Habits'|'Journal'|'Analytics'|'Search'|'People'|'Projects'|'Knowledge'|'Settings';
-const APP_VERSION='0.4.2';
+const APP_VERSION='0.4.3';
 const nav:[Page,string,keyof typeof import('lucide-react')][]=[['Dashboard','LayoutDashboard','LayoutDashboard'],['Today','Today','Sun'],['Learning','Growth','Compass'],['Skills','Growth','Sparkles'],['Habits','Growth','Repeat2'],['People','Connect','Users'],['Projects','Build','FolderKanban'],['Knowledge','Explore','BookOpen'],['Journal','Reflect','NotebookPen'],['Analytics','Reflect','ChartNoAxesCombined']];
 function App(){const{data,toggleTask,toggleHabit,updateLog}=useAppStore();const[page,setPage]=useState<Page>('Dashboard');const[query,setQuery]=useState('');const[dark,setDark]=useState(false);const completed=data.tasks.filter(t=>t.status==='done').length;const active=data.tasks.length-completed;const totalMinutes=data.tasks.filter(t=>t.status==='done').reduce((a,t)=>a+t.minutes,0)+data.log.minutes;const date=new Intl.DateTimeFormat('en-US',{weekday:'long',month:'long',day:'numeric'}).format(new Date());
 const pageTitle=page==='Dashboard'?'Good morning, Jerry.':page==='Today'?'Today':page==='Learning'?'Learning Areas':page==='Skills'?'Skills':page==='Habits'?'Habits':page==='Journal'?'Daily Journal':page;
