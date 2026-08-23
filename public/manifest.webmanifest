@@ -1,0 +1,13 @@
+{
+  "name": "Personal Life OS",
+  "short_name": "Life OS",
+  "description": "Grow, learn, connect and remember.",
+  "start_url": "/personal-life-os/",
+  "display": "standalone",
+  "background_color": "#f7f7f8",
+  "theme_color": "#332f3d",
+  "orientation": "any",
+  "icons": [
+    { "src": "/personal-life-os/icons/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

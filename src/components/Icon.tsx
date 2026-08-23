@@ -1,0 +1,1 @@
+import*as I from'lucide-react';import type{LucideProps}from'lucide-react';import type{ComponentType}from'react';export default function Icon({name,...props}:{name:keyof typeof I}&LucideProps){const C=I[name] as ComponentType<LucideProps>;return<C {...props}/>} 
