@@ -2,20 +2,20 @@ import { useEffect, useState } from 'react';
 import Icon from './Icon';
 
 const guides = [
-  ['Dashboard','从这里快速了解今天的状态。','查看今日任务、学习时间、当前 streak、重点 Learning Areas、最近活动和 Daily Knowledge。建议每天打开一次，先确认今天最重要的一步。','LayoutDashboard'],
-  ['Today','把长期目标变成今天可以完成的小动作。','完成或新增 Daily Progress Tasks，使用 Generate、Tune difficulty、Regenerate 调整任务；可以启动 Focus Timer，并打开 Daily Log 记录当天学习。','Sun'],
-  ['Learning Areas','管理长期学习方向。','创建 Neuroscience、BCI、AI 等方向，填写长期目标、当前重点、主题、资源和备注。建议只保留真正长期投入的方向。','Compass'],
-  ['Skills','追踪可训练的具体技能。','添加 Python、Statistics、Scientific Writing 等技能，设置当前水平和目标水平。每次练习后使用 +20m 或菜单记录练习，系统会累计次数、时间和进度。','Sparkles'],
+  ['Dashboard','从这里快速了解今天的状态。','查看 Today’s progress、学习分钟数、当前和最佳 streak、Active Areas、Skills practiced、今日任务、Focus Areas、最近活动和 Daily Knowledge。点击 Open today 进入任务页，点击 Manage 管理学习方向，点击 See journal 查看复盘。建议每天先从 Dashboard 确认一件最重要的事。','LayoutDashboard'],
+  ['Today','把长期目标变成今天可以完成的小动作。','点击任务圆圈完成任务；使用 Add task 手动添加，Generate tasks 自动生成少量任务，Tune difficulty 根据表现调整难度，Regenerate 重新生成。每个任务的三点菜单可以编辑、复制、完成或删除。Focus Timer 用于专注计时，Open daily log 打开当天记录。','Sun'],
+  ['Learning Areas','管理长期学习方向。','点击 New learning area 创建方向；三点菜单可以 Edit details、Pause / Resume 和 Delete。编辑窗口可以填写 Description、Priority、Status、Long-term goal、Current focus、Topics、Resources 和 Notes。进度条用于表达长期进展。','Compass'],
+  ['Skills','追踪可训练的具体技能。','点击 Add skill 添加技能，填写 Current level、Target level、Current focus、Resources 和 Milestones。练习后点击 +20m 或三点菜单 Record practice；Edit details 可以修改等级和目标。系统会保存 practice count、累计分钟数、最近练习和 progress log。','Sparkles'],
   ['Habits','维护持续进步所需的日常习惯。','创建小而稳定的习惯，例如每天阅读摘要或练习 20 分钟。完成后会更新 streak；重点是保持节奏，不是堆积大量习惯。','Repeat2'],
-  ['People','记住重要的人和关系。','添加朋友、导师、同事或研究合作者，记录兴趣、备注、互动和 follow-up。People 会和 Today 的关系提醒配合使用。','Users'],
-  ['Projects','把方向变成可交付的项目。','创建项目、编辑下一步、添加里程碑、更新完成状态。适合文献综述、研究计划、作品集和其他需要多步推进的事情。','FolderKanban'],
-  ['Knowledge','每天获取值得关注的新信息。','浏览 Daily Knowledge，按领域筛选，保存、标记已读、评分或隐藏内容。Refresh knowledge 会从可靠来源更新研究信息。','BookOpen'],
-  ['Books','把整本书转化成学习路径。','上传 TXT、Markdown 或 PDF，查看概念分层、15 分钟 / 1 小时 / Deep Learning 路径、Knowledge Map 和 Active Recall。','LibraryBig'],
-  ['Resources','保存值得反复使用的资料。','管理论文、书、课程、视频、网站、数据集、工具和笔记；使用类型、状态、标签和 Learning Area / Skill / Project 关联来整理。','Library'],
-  ['Journal','记录每天真正发生的学习。','填写学到了什么、最大进步、遇到的问题、明天继续做什么和自由笔记。完成的任务会自动带入，并可以搜索历史记录。','NotebookPen'],
-  ['Analytics','观察长期趋势，而不是只看今天。','查看最近 7 天学习时间、任务完成、技能练习、领域投入和 Weekly Review；还可以生成并保存 AI Weekly Review。','ChartNoAxesCombined'],
-  ['Graph','查看知识之间的连接。','Learning Areas、Skills、Projects 和 Resources 会在图中形成连接。先给资源关联方向、技能或项目，Knowledge Graph 才会逐渐丰富。','Share2'],
-  ['Settings','管理偏好、AI 和数据。','设置 OpenAI / Supabase AI、主题颜色、暗色模式、备份恢复、Supabase 云同步和应用版本。云同步前请先配置表结构与安全策略。','Settings'],
+  ['People','记住重要的人和关系。','点击 Add person 创建人物；头像相机可以上传或移除头像，Add photo 可以保存照片记录。Relationship Engine 可以选择人物并记录 Person Facts、Conversations、Promises、Follow-ups 和 Important Dates。卡片三点菜单可以编辑姓名、备注、兴趣、安排 follow-up、记录互动或删除人物。','Users'],
+  ['Projects','把方向变成可交付的项目。','点击 New project 创建项目；Edit project 修改名称和下一步，Add milestone 添加阶段节点，Toggle complete 更新完成状态。Goals 区域可以增加目标、编辑标题、增加 10% 进度、添加里程碑或重置进度。','FolderKanban'],
+  ['Knowledge','每天获取值得关注的新信息。','Refresh knowledge 会从 Europe PMC 和 Crossref 获取研究信号。按领域筛选，使用 Saved only、Rated、Save、Mark read、Not interested 和 1–5 星评分管理阅读队列；Open original source 会打开原始链接。','BookOpen'],
+  ['Books','把整本书转化成学习路径。','上传 TXT、Markdown 或 PDF 后，打开书籍可查看 Whole-book synthesis、Tier 1–4 概念、source chunks 和 recall questions。Start 15 min、Start 1 hour、Deep learning 会记录学习 session；Add to daily plan 会生成任务；Knowledge map 展示概念关系，Active recall 用 I knew it / Need review 更新复习状态。','LibraryBig'],
+  ['Resources','保存值得反复使用的资料。','Add resource 可以保存 Paper、Book、Video、Course、Website、Dataset、Tool、Podcast 或 Note。使用 Inbox、To Read、Reading、Finished、Reference 管理状态；搜索标题、备注和标签，并关联 Learning Area、Skill、Project。','Library'],
+  ['Journal','记录每天真正发生的学习。','填写 What did you learn、Biggest progress today、What got in the way、Tomorrow I want to 和 Free notes。完成的任务会自动出现在 Automatically captured；Save today’s log 保存历史，搜索框可以查找日期和反思，点击历史条目查看完整内容。','NotebookPen'],
+  ['Analytics','观察长期趋势，而不是只看今天。','查看最近 7 天 Learning time 柱状图、Tasks completed、Active areas、Skill practice、Focus areas 和 Weekly Review。AI Recommendations 根据近期行为生成建议；AI Weekly Review 会保存历史，可随时重新查看。','ChartNoAxesCombined'],
+  ['Graph','查看知识之间的连接。','Knowledge Graph 会显示 Learning Areas、Skills、Projects 和 Resources 的节点与连线。要让关系图变丰富，先在 Resources 中把资料关联到方向、技能或项目；当前图谱是帮助理解结构的可视化，不是关系质量评分。','Share2'],
+  ['Settings','管理偏好、AI 和数据。','OpenAI API 区域用于保存或移除 API key；AI Recommendations 使用 Supabase Function URL。Guidance Center 可以重新打开本指南；Theme Picker 可以选择 Lavender、Soft mint、Sky blue、Warm peach；Backup Tools 支持 JSON 导出和导入；Supabase cloud sync 支持上传和恢复 workspace；Reset app data 会清除本地数据，请谨慎使用。','Settings'],
 ] as const;
 
 export default function GuidanceCenter() {
