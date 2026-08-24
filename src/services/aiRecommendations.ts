@@ -8,7 +8,7 @@ export type GrowthContext = {
 
 export async function requestAIRecommendations(endpoint: string, context: GrowthContext) {
   const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(context) });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'AI request failed');
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `AI request failed (${response.status})`);
   return body.text as string;
 }

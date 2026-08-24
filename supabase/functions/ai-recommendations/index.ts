@@ -29,7 +29,12 @@ Deno.serve(async (request) => {
     });
     const body = await response.json();
     if (!response.ok) return new Response(JSON.stringify({ error: body.error?.message || 'OpenAI request failed' }), { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    return new Response(JSON.stringify({ text: body.output_text || '' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const text = body.output_text || (body.output || [])
+      .flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
+      .filter((item: { type?: string; text?: string }) => item.type === 'output_text' && item.text)
+      .map((item: { type?: string; text?: string }) => item.text)
+      .join('\n');
+    return new Response(JSON.stringify({ text: text || 'No recommendation text was returned.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
