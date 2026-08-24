@@ -5,7 +5,7 @@ export interface Task{id:string;title:string;description:string;minutes:number;d
 export interface Habit{id:string;name:string;frequency:string;target:string;streak:number;best:number;checked:boolean;areaId?:string;skillId?:string}
 export interface Activity{id:string;label:string;type:string;time:string;meta?:string}
 export interface DailyLog{date:string;learned:string;progress:string;problems:string;tomorrow:string;notes:string;minutes:number}
-export interface KnowledgeItem{id:string;title:string;source:string;publishedAt:string;field:string;summary:string;whyItMatters:string;url:string;read?:boolean}
+export interface KnowledgeItem{id:string;title:string;source:string;publishedAt:string;field:string;summary:string;whyItMatters:string;url:string;authors?:string[];tags?:string[];rating?:number;read?:boolean;saved?:boolean}
 export interface Project{id:string;name:string;type:string;status:'Planning'|'In progress'|'Completed';progress:number;deadline:string;meta:string;next:string;color:string}
 export interface Goal{id:string;title:string;period:string;progress:number;detail:string}
 export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog}
