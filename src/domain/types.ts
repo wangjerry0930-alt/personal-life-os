@@ -11,7 +11,8 @@ export interface Goal{id:string;title:string;period:string;progress:number;detai
 export type ResourceType='Paper'|'Book'|'Video'|'Course'|'Website'|'Dataset'|'Tool'|'Podcast'|'Note';
 export type ResourceStatus='Inbox'|'To Read'|'Reading'|'Finished'|'Reference';
 export interface ResourceItem{id:string;title:string;type:ResourceType;status:ResourceStatus;url:string;notes:string;tags:string[];areaId?:string;skillId?:string;projectId?:string;createdAt:string}
-export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog;hydration?:HydrationState}
+import type { Interest } from './interests';
+export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog;interests:Interest[];hydration?:HydrationState}
 export interface BaseEntity{id:string;createdAt:string;updatedAt:string;deletedAt?:string}
 export type ActivityType='TaskCompleted'|'SkillPractice'|'HabitCompleted'|'LearningSession'|'BookUploaded'|'BookLearning'|'ConceptLearned'|'RecallCompleted'|'BookTaskCompleted'|'PaperRead'|'Interaction'|'Conversation'|'Meeting'|'ProjectWork'|'KnowledgeRead'|'JournalEntry'|'Custom';
 export interface ActivityEntity extends BaseEntity{id:string;type:ActivityType;title:string;description?:string;occurredAt:string;durationMinutes?:number;source?:string;metadata?:Record<string,unknown>;relations?:EntityRelation[]}
