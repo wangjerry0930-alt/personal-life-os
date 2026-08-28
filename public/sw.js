@@ -1,4 +1,4 @@
-const CACHE = 'personal-life-os-v612';
+const CACHE = 'personal-life-os-v613';
 const BASE = self.registration.scope;
 const APP_SHELL = [BASE, `${BASE}manifest.webmanifest`, `${BASE}icons/app-icon.svg`];
 self.addEventListener('install', event => {
