@@ -11,5 +11,7 @@ export function migrateLegacyData():RepositorySnapshot {
   if(current?.schemaVersion===5)return current;
   const legacy:Record<string,unknown>={}; legacyKeys.forEach(key=>{if(storageAdapter.has(key))legacy[key]=storageAdapter.get(key,[])});
   const oldData=storageAdapter.get<AppData|null>('personal-life-os-data',null); const snapshot=empty({...seed,...(oldData||{}),projects:oldData?.projects||seed.projects,goals:oldData?.goals||seed.goals});
+  const legacyActivities=Array.isArray(oldData?.activities)?oldData.activities:[];
+  snapshot.activities=legacyActivities.map((item:any,index)=>{const occurredAt=typeof item.time==='string'&&item.time.includes('T')?item.time:now();return{id:`legacy-activity-${index}-${Date.now()}`,createdAt:occurredAt,updatedAt:occurredAt,type:'Custom',title:item.label||'Legacy activity',occurredAt,source:'Legacy',metadata:{legacyType:item.type,legacyMeta:item.meta}}});
   snapshot.legacy=legacy; storageAdapter.set(REPOSITORY_KEY,snapshot); storageAdapter.set('personal-life-os-migration-v5',{completedAt:now(),legacyKeys}); return snapshot;
 }

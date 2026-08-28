@@ -1,0 +1,5 @@
+import type { HabitLog } from '../domain/types';
+
+export function upsertHabitLog(logs:HabitLog[],next:HabitLog):HabitLog[]{return [next,...logs.filter(log=>!(log.habitId===next.habitId&&log.date===next.date))];}
+export function calculateDailyStreak(habitId:string,logs:HabitLog[],today=new Date().toISOString().slice(0,10)){const completed=new Set(logs.filter(log=>log.habitId===habitId&&log.completed).map(log=>log.date));let cursor=new Date(`${today}T12:00:00`);let streak=0;while(completed.has(cursor.toISOString().slice(0,10))){streak++;cursor.setDate(cursor.getDate()-1)}return streak;}
+export function calculateWeekdayStreak(habitId:string,logs:HabitLog[],today=new Date().toISOString().slice(0,10)){const completed=new Set(logs.filter(log=>log.habitId===habitId&&log.completed).map(log=>log.date));let cursor=new Date(`${today}T12:00:00`);let streak=0;while(true){const day=cursor.getDay();if(day!==0&&day!==6){if(!completed.has(cursor.toISOString().slice(0,10)))break;streak++;}cursor.setDate(cursor.getDate()-1);if(streak>366)break;}return streak;}

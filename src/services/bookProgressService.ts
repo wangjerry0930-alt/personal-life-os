@@ -1,0 +1,2 @@
+import type { Book } from '../domain/books';
+export function calculateBookProgress(book:Pick<Book,'concepts'|'sessions'|'recalls'>){const core=book.concepts.filter(item=>item.tier===1);const mastery=core.length?core.filter(item=>item.learned).length/core.length:0;const sessions=Math.min(book.sessions.length/8,1);const recall=book.recalls.length?book.recalls.reduce((sum,item)=>sum+item.confidence,0)/(book.recalls.length*100):0;return Math.round((mastery*.5+sessions*.25+recall*.25)*100);}
