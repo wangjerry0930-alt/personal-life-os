@@ -20,3 +20,5 @@ export interface TaskCompletion extends BaseEntity{taskId:string;completedAt:str
 export type EntityType='LearningArea'|'Skill'|'Task'|'Habit'|'Project'|'Goal'|'Person'|'Book'|'Concept'|'Resource'|'KnowledgeItem'|'Activity'|'Location'|'Organisation';
 export interface EntityRelation extends BaseEntity{sourceType:EntityType;sourceId:string;relationType:string;targetType:EntityType;targetId:string;metadata?:Record<string,unknown>}
 export interface RepositorySnapshot{schemaVersion:5;data:AppData;activities:ActivityEntity[];habitLogs:HabitLog[];taskCompletions:TaskCompletion[];relations:EntityRelation[];legacy?:Record<string,unknown>;updatedAt:string}
+export interface HydrationEntry{id:string;ml:number;at:string}
+export interface HydrationState{date:string;goalMl:number;consumedMl:number;entries:HydrationEntry[];reminderMinutes:number;notificationsEnabled:boolean;lastNotifiedAt?:string}
