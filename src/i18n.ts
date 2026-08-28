@@ -1,0 +1,3 @@
+export type Language='en'|'zh';
+export const languageLabels:Record<Language,Record<string,string>>={en:{Dashboard:'Dashboard',Today:'Today',Learning:'Learning Areas',Skills:'Skills',Habits:'Habits',People:'People',Projects:'Projects',Knowledge:'Knowledge',Books:'Books',Resources:'Resources',Graph:'Graph',Journal:'Journal',Analytics:'Analytics',Settings:'Settings'},zh:{Dashboard:'仪表盘',Today:'今日',Learning:'学习方向',Skills:'技能',Habits:'习惯',People:'人物关系',Projects:'项目与目标',Knowledge:'每日知识',Books:'书籍学习',Resources:'资源库',Graph:'知识图谱',Journal:'每日复盘',Analytics:'数据分析',Settings:'设置'}};
+export const getLanguage=():Language=>localStorage.getItem('personal-life-os-language')==='zh'?'zh':'en';
