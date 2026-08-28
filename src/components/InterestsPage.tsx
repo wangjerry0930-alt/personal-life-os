@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
 import type { AppData } from '../domain/types';
+import { profileInterestAdditions, profileInterestAliases, profileInterests } from '../domain/interests';
 import type { Interest, InterestLevel } from '../domain/interests';
 
 const categories=['All','Science & Research','Traditional Culture & Esoterica','Business & Management','Creative & Media','Music','Technology','Life & Experience','Entertainment'];
@@ -10,7 +11,7 @@ const today=()=>new Date().toISOString().slice(0,10);
 
 export default function InterestsPage({data,setData}:{data:AppData;setData:(updater:any)=>void}){
  const [query,setQuery]=useState('');const [category,setCategory]=useState('All');const [selected,setSelected]=useState<Interest|null>(null);const [showAdd,setShowAdd]=useState(false);const [message,setMessage]=useState('');
- const interests=data.interests||[];const visible=useMemo(()=>interests.filter(item=>item.status!=='archived'&&(category==='All'||item.category===category)&&item.name.toLowerCase().includes(query.toLowerCase())),[interests,category,query]);
+ const storedInterests=data.interests||[];const catalog=[...profileInterests,...profileInterestAdditions,...profileInterestAliases];const names=new Set(storedInterests.map(item=>item.name.trim().toLowerCase()));const interests=[...storedInterests,...catalog.filter(item=>!names.has(item.name.trim().toLowerCase()))];useEffect(()=>{if(interests.length!==storedInterests.length)setData((current:AppData)=>({...current,interests:[...(current.interests||[]),...catalog.filter(item=>!(current.interests||[]).some(existing=>existing.name.trim().toLowerCase()===item.name.trim().toLowerCase()))]}))},[interests.length,storedInterests.length,setData]);const visible=useMemo(()=>interests.filter(item=>item.status!=='archived'&&(category==='All'||item.category===category)&&item.name.toLowerCase().includes(query.toLowerCase())),[interests,category,query]);
  const explore=()=>{const candidates=interests.filter(item=>item.status==='active').sort(()=>Math.random()-.5);if(candidates[0]){setSelected(candidates[0]);setMessage('A random interest is ready to explore.')}};
  const create=(name:string,categoryName:string,level:InterestLevel)=>{const stamp=new Date().toISOString();const interest:Interest={id:`interest-${Date.now()}`,name,category:categoryName,priority:50,interestLevel:level,knowledgeLevel:0,status:'active',tags:[],relatedInterests:[],dailyKnowledgeEnabled:false,dailyTaskEnabled:false,frontierUpdateEnabled:false,learningGoals:[],resources:[],notes:'',subtopics:[],learningPath:['入门','基础','进阶','深入'],explorationLog:[],createdAt:stamp,updatedAt:stamp,types:['interest']};setData((current:AppData)=>({...current,interests:[interest,...(current.interests||[])]}));setShowAdd(false);setSelected(interest);};
  const currentSelected=selected&&interests.find(item=>item.id===selected.id)||selected;
