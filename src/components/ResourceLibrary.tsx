@@ -2,12 +2,11 @@ import { useMemo, useState } from 'react';
 import Icon from './Icon';
 import ActionMenu from './ActionMenu';
 import type { LearningArea, Project, ResourceItem, ResourceStatus, ResourceType, Skill } from '../domain/types';
+import { resourceRepository } from '../repositories/legacyRepositories';
 
 const types: ResourceType[] = ['Paper','Book','Video','Course','Website','Dataset','Tool','Podcast','Note'];
 const statuses: ResourceStatus[] = ['Inbox','To Read','Reading','Finished','Reference'];
-const key = 'personal-life-os-resources';
-
-function readResources(): ResourceItem[] { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } }
+function readResources(): ResourceItem[] { return resourceRepository.load(); }
 
 export default function ResourceLibrary({ areas, skills, projects }: { areas: LearningArea[]; skills: Skill[]; projects: Project[] }) {
   const [items, setItems] = useState<ResourceItem[]>(readResources);
@@ -15,7 +14,7 @@ export default function ResourceLibrary({ areas, skills, projects }: { areas: Le
   const [type, setType] = useState<'All'|ResourceType>('All');
   const [status, setStatus] = useState<'All'|ResourceStatus>('All');
   const [form, setForm] = useState<ResourceItem | null>(null);
-  const save = (next: ResourceItem[]) => { setItems(next); localStorage.setItem(key, JSON.stringify(next)); };
+  const save = (next: ResourceItem[]) => { setItems(next); resourceRepository.save(next); };
   const visible = useMemo(() => items.filter(item => (type === 'All' || item.type === type) && (status === 'All' || item.status === status) && (item.title+' '+item.notes+' '+item.tags.join(' ')).toLowerCase().includes(query.toLowerCase())), [items, query, type, status]);
   const updateStatus = (item: ResourceItem, next: ResourceStatus) => save(items.map(x => x.id === item.id ? { ...x, status: next } : x));
   return <div className="content resource-page">

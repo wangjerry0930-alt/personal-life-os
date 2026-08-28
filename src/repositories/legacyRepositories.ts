@@ -1,0 +1,15 @@
+import { storageAdapter } from './storageAdapter';
+import type { Capture } from '../domain/capture';
+import type { ImportantDate, Interaction, Person, PersonFact } from '../domain/people';
+import type { KnowledgeItem, ResourceItem } from '../domain/types';
+const list=<T,>(key:string)=>storageAdapter.get<T[]>(key,[]);
+const save=<T,>(key:string,value:T[])=>storageAdapter.set(key,value);
+export const peopleRepository={load:()=>list<Person>('personal-life-os-people'),save:(value:Person[])=>save('personal-life-os-people',value)};
+export const personFactRepository={load:()=>list<PersonFact>('personal-life-os-person-facts'),save:(value:PersonFact[])=>save('personal-life-os-person-facts',value)};
+export const interactionRepository={load:()=>list<Interaction>('personal-life-os-conversations'),save:(value:Interaction[])=>save('personal-life-os-conversations',value)};
+export const importantDateRepository={load:()=>list<ImportantDate>('personal-life-os-important-dates'),save:(value:ImportantDate[])=>save('personal-life-os-important-dates',value)};
+export const resourceRepository={load:()=>list<ResourceItem>('personal-life-os-resources'),save:(value:ResourceItem[])=>save('personal-life-os-resources',value)};
+export const knowledgeRepository={load:()=>list<KnowledgeItem>('personal-life-os-knowledge'),save:(value:KnowledgeItem[])=>save('personal-life-os-knowledge',value)};
+export const captureRepository={load:()=>list<Capture>('personal-life-os-captures'),save:(value:Capture[])=>save('personal-life-os-captures',value)};
+export const journalRepository={load:()=>list<any>('personal-life-os-journal-history'),save:(value:any[])=>save('personal-life-os-journal-history',value)};
+export const metadataRepository={get:<T,>(key:string,fallback:T)=>storageAdapter.get<T>(key,fallback),set:<T,>(key:string,value:T)=>storageAdapter.set(key,value),remove:(key:string)=>localStorage.removeItem(key)};

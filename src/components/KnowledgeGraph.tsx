@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import Icon from './Icon';
 import type { AppData, ResourceItem } from '../domain/types';
+import { resourceRepository } from '../repositories/legacyRepositories';
 
 export default function KnowledgeGraph({ data }: { data: AppData }) {
-  const resources: ResourceItem[] = useMemo(() => { try { return JSON.parse(localStorage.getItem('personal-life-os-resources') || '[]'); } catch { return []; } }, []);
+  const resources: ResourceItem[] = useMemo(() => resourceRepository.load(), []);
   const nodes = useMemo(() => [...data.areas.slice(0,5).map(x=>({id:x.id,label:x.name,type:'Area',color:x.color})), ...data.skills.slice(0,5).map(x=>({id:x.id,label:x.name,type:'Skill',color:'#8b7cf6'})), ...(data.projects||[]).slice(0,4).map(x=>({id:x.id,label:x.name,type:'Project',color:'#d18b62'})), ...resources.slice(0,6).map(x=>({id:x.id,label:x.title,type:'Resource',color:'#62a98b'}))], [data, resources]);
   const links = useMemo(() => resources.flatMap(resource => [resource.areaId && {from:resource.id,to:resource.areaId}, resource.skillId && {from:resource.id,to:resource.skillId}, resource.projectId && {from:resource.id,to:resource.projectId}].filter(Boolean) as Array<{from:string;to:string}>), [resources]);
   const positions = nodes.map((node,index)=>({ ...node, x: 80 + (index%4)*190, y: 70 + Math.floor(index/4)*125 })); const byId = new Map(positions.map(x=>[x.id,x]));
