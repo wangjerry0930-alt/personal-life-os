@@ -1,6 +1,6 @@
 import type { Book } from '../domain/books';
 import { metadataRepository } from '../repositories/legacyRepositories';
-export type BookAIConcept={name:string;summary:string;tier:1|2|3|4;whyEssential?:string;prerequisites?:string[];pages?:string};
+export type BookAIConcept={name:string;summary:string;tier:1|2|3|4;whyEssential?:string;prerequisites?:string[];sourceChunkIds?:string[];centralityScore?:number;dependencyScore?:number;bookThesisImportance?:number;userRelevanceScore?:number;practicalValue?:number;redundancyPenalty?:number};
 export type BookAIResult={bookType:string;coreThesis:string;concepts:BookAIConcept[];recalls:Array<{question:string;answer:string;difficulty:'Easy'|'Medium'|'Hard';conceptName:string}>;warnings?:string[]};
 export async function requestBookAI(endpoint:string,book:Book,context:{areas:string[];skills:string[];goals:string[]}){const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'book-extract',book:{id:book.id,title:book.title,chunks:(book.bookChunks||[]).slice(0,24).map(chunk=>({text:chunk.text,pageStart:chunk.pageStart,pageEnd:chunk.pageEnd,chunkIndex:chunk.chunkIndex}))},context})});const body=await response.json();if(!response.ok)throw new Error(body.error||'Book AI request failed');if(!body.result)throw new Error('The AI returned no structured book result');return body.result as BookAIResult;}
 export const configuredBookAIEndpoint=()=>metadataRepository.get<string>('personal-life-os-ai-endpoint','');
