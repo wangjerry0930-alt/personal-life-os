@@ -5,10 +5,11 @@ import type { LearningArea, Skill } from '../domain/types';
 import type { Book, BookConcept as Concept, BookRecall as Recall } from '../domain/books';
 import { loadBooks, saveBooks } from '../repositories/bookRepository';
 import { calculateBookProgress } from '../services/bookProgressService';
-import { appendActivity } from '../repositories/appRepository';
+import { appendActivity, appendRecallAttempt } from '../repositories/appRepository';
 import { parserFor } from '../services/bookParser';
 import { configuredBookAIEndpoint, requestBookAI } from '../services/bookAiService';
 import { metadataRepository } from '../repositories/legacyRepositories';
+import { scheduleRecall } from '../services/recallService';
 
 const today=()=>new Date().toISOString().slice(0,10);
 function analyze(text:string):Pick<Book,'chapters'|'chunks'|'summary'|'concepts'|'recalls'>{
@@ -36,7 +37,7 @@ function BookMap({book}:{book:Book}){return <section className="book-map"><p cla
 function RecallView({ book, onUpdate }: { book: Book; onUpdate: (book: Book) => void }) {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const answer = (recall: Recall, correct: boolean) => {
-    const next: Book = { ...book, recalls: book.recalls.map(item => item.id === recall.id ? { ...item, confidence: correct ? Math.min(100, item.confidence + 20) : Math.max(0, item.confidence - 10), nextReview: correct ? new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) : today() } : item) };
+    const attemptedAt=new Date().toISOString(); const nextReview=scheduleRecall(recall.confidence>0?Math.ceil(recall.confidence/20):0,correct); appendRecallAttempt({id:`recall-attempt-${Date.now()}`,createdAt:attemptedAt,updatedAt:attemptedAt,questionId:recall.id,bookId:book.id,attemptedAt,result:correct?'correct':'incorrect',confidence:correct?100:0,nextReview}); appendActivity({id:`activity-${Date.now()}`,createdAt:attemptedAt,updatedAt:attemptedAt,type:'RecallCompleted',title:recall.question,occurredAt:attemptedAt,source:'Book',metadata:{bookId:book.id,questionId:recall.id,result:correct?'correct':'incorrect'}}); const next: Book = { ...book, recalls: book.recalls.map(item => item.id === recall.id ? { ...item, confidence: correct ? Math.min(100, item.confidence + 20) : Math.max(0, item.confidence - 10), nextReview } : item) };
     onUpdate(next); setRevealed(current => ({ ...current, [recall.id]: true }));
   };
   return <section className="recall-list">{book.recalls.map(recall => <article className="recall-card" key={recall.id}><span className="pill teal">{recall.difficulty} · review {recall.nextReview}</span><h3>{recall.question}</h3>{revealed[recall.id] && <p>{recall.answer}</p>}<div className="recall-actions">{!revealed[recall.id] ? <button className="secondary" onClick={() => setRevealed(current => ({ ...current, [recall.id]: true }))}>Reveal answer</button> : <><button className="secondary" onClick={() => answer(recall, true)}>I knew it</button><button className="secondary" onClick={() => answer(recall, false)}>Need review</button></>}</div></article>)}</section>;
