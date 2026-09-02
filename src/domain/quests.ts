@@ -1,4 +1,4 @@
-export type QuestType='DAILY'|'WEEKLY'|'PRACTICE'|'LEARNING'|'EXPLORATION'|'RESEARCH'|'CREATIVE'|'CHALLENGE'|'PROMOTION'|'CAPSTONE'|'CUSTOM';
+export type QuestType='DAILY'|'WEEKLY'|'PRACTICE'|'LEARNING'|'EXPLORATION'|'RESEARCH'|'CREATIVE'|'CHALLENGE'|'PROMOTION'|'CAPSTONE'|'BOSS'|'CUSTOM';
 export interface Quest{ id:string; title:string; description:string; type:QuestType; targetId:string; targetName:string; minutes:number; difficulty:1|2|3|4|5; prerequisites?:string[]; status:'available'|'accepted'|'completed'|'skipped'; createdAt:string; completedAt?:string; source?:'generated'|'imported' }
 export interface AreaRank{ targetId:string; targetName:string; rank:number; dailyCompleted:number; weeklyCompleted:number; promotionUnlocked:boolean; promotionCompleted:boolean }
 export const rankNames=['Initiate','Beginner','Developing','Intermediate','Advanced','High Rank','Master Rank','Expert'];
