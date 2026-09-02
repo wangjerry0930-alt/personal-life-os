@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import Icon from './Icon';
 import type { AppData } from '../domain/types';
-import { makeQuest, questTemplates, rankNames, type AreaRank, type Quest } from '../domain/quests';
+import { defaultQuestPool, makeQuest, questTemplates, rankNames, type AreaRank, type Quest } from '../domain/quests';
 
 const KEY='personal-life-os-quest-board-v1';
 const read=<T,>(fallback:T):T=>{try{return JSON.parse(localStorage.getItem(KEY)||'')||fallback}catch{return fallback}};
 export default function QuestBoard({data,setData}:{data:AppData;setData:(updater:any)=>void}){
- const targets=useMemo(()=>[...data.areas.map(x=>({id:x.id,name:x.name})),...(data.interests||[]).filter(x=>x.status!=='archived').map(x=>({id:x.id,name:x.name}))],[data.areas,data.interests]);
- const saved=read<{ranks:AreaRank[];quests:Quest[]}>({ranks:[],quests:[]});const [selected,setSelected]=useState('all');const [ranks,setRanks]=useState<AreaRank[]>(saved.ranks);const [quests,setQuests]=useState<Quest[]>(saved.quests);
+ const targets=useMemo(()=>{const existing=[...data.areas.map(x=>({id:x.id,name:x.name})),...(data.interests||[]).filter(x=>x.status!=='archived').map(x=>({id:x.id,name:x.name}))];const names=new Set(existing.map(x=>x.name.toLowerCase()));return [...existing,...defaultQuestPool.map(x=>({id:`seed-board-${x.area}`,name:x.area})).filter(x=>!names.has(x.name.toLowerCase())).filter((x,i,a)=>a.findIndex(y=>y.name===x.name)===i)]},[data.areas,data.interests]);
+ const saved=read<{ranks:AreaRank[];quests:Quest[]}>({ranks:[],quests:[]});const seedQuests=defaultQuestPool.slice(0,3).map(item=>makeQuest(item as any,targets.find(x=>x.name===item.area)?.id||`seed-board-${item.area}`,item.area));const [selected,setSelected]=useState('all');const [ranks,setRanks]=useState<AreaRank[]>(saved.ranks);const [quests,setQuests]=useState<Quest[]>(saved.quests.length?saved.quests:seedQuests);
  const persist=(nextRanks:AreaRank[],nextQuests:Quest[])=>{setRanks(nextRanks);setQuests(nextQuests);localStorage.setItem(KEY,JSON.stringify({ranks:nextRanks,quests:nextQuests}))};
  const rankFor=(id:string,name:string)=>ranks.find(x=>x.targetId===id)||{targetId:id,targetName:name,rank:1,dailyCompleted:0,weeklyCompleted:0,promotionUnlocked:false,promotionCompleted:false};
  const generate=()=>{const pool=targets.filter(x=>selected==='all'||x.id===selected);const next=pool.flatMap(target=>questTemplates(target.name).filter(x=>x.type==='DAILY'||x.type==='WEEKLY'||x.type==='CHALLENGE').slice(0,3).map(x=>makeQuest(x,target.id,target.name)));setQuests(previous=>{const kept=previous.filter(x=>x.status==='accepted'&&x.type!=='DAILY');const result=[...kept,...next];localStorage.setItem(KEY,JSON.stringify({ranks,quests:result}));return result})};
