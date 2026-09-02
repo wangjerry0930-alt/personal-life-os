@@ -1,0 +1,7 @@
+.task-body{appearance:none;background:none;border:0;color:inherit;cursor:pointer;display:flex;flex:1;flex-direction:column;min-width:0;padding:0;text-align:left}
+.task-body:hover b{text-decoration:underline;text-underline-offset:3px}
+.task-detail{background:var(--surface-soft,#f7f6fc);border:1px solid var(--border,#e7e4ef);border-radius:12px;grid-column:2/-1;margin:8px 0 2px;padding:12px 14px}
+.task-detail-head{display:flex;justify-content:space-between;margin-bottom:8px}
+.task-detail-head span{color:var(--muted);font-variant-numeric:tabular-nums}
+.task-timer-progress{margin-bottom:10px}
+.task-detail-actions{display:flex;flex-wrap:wrap;gap:8px}
