@@ -1,5 +1,5 @@
 export type QuestType='DAILY'|'WEEKLY'|'PRACTICE'|'LEARNING'|'EXPLORATION'|'RESEARCH'|'CREATIVE'|'CHALLENGE'|'PROMOTION'|'CAPSTONE'|'BOSS'|'CUSTOM';
-export interface Quest{ id:string; title:string; description:string; type:QuestType; targetId:string; targetName:string; minutes:number; difficulty:1|2|3|4|5; prerequisites?:string[]; status:'available'|'accepted'|'completed'|'skipped'; createdAt:string; completedAt?:string; source?:'generated'|'imported' }
+export interface Quest{ id:string; title:string; description:string; type:QuestType; targetId:string; targetName:string; minutes:number; difficulty:1|2|3|4|5; prerequisites?:string[]; cooldownDays?:number; weight?:number; status:'available'|'accepted'|'completed'|'skipped'; createdAt:string; completedAt?:string; source?:'generated'|'imported' }
 export interface AreaRank{ targetId:string; targetName:string; rank:number; dailyCompleted:number; weeklyCompleted:number; promotionUnlocked:boolean; promotionCompleted:boolean }
 export const rankNames=['Initiate','Beginner','Developing','Intermediate','Advanced','High Rank','Master Rank','Expert'];
 export const questSeedAreas=[
@@ -25,4 +25,5 @@ export const questTemplates=(name:string):Omit<Quest,'id'|'targetId'|'targetName
  {title:`Explain ${name} in your own words`,description:`Create a short explanation that demonstrates understanding rather than recognition.`,type:'CHALLENGE',minutes:30,difficulty:3},
  {title:`Promotion: demonstrate ${name}`,description:`Complete a small artifact or explanation that proves your current level.`,type:'PROMOTION',minutes:40,difficulty:4}
 ]};
-export const makeQuest=(template:ReturnType<typeof questTemplates>[number],targetId:string,targetName:string):Quest=>({...template,id:`quest-${targetId}-${template.type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,targetId,targetName,status:'available',createdAt:new Date().toISOString()});
+export const makeQuest=(template:ReturnType<typeof questTemplates>[number],targetId:string,targetName:string):Quest=>({...template,id:`quest-${targetId}-${template.type}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,targetId,targetName,cooldownDays:template.type==='WEEKLY'?7:2,weight:1,status:'available',createdAt:new Date().toISOString()});
+export function weightedSample<T extends {weight?:number}>(items:T[],count:number){const pool=[...items];const result:T[]=[];while(pool.length&&result.length<count){const total=pool.reduce((sum,item)=>sum+Math.max(.01,item.weight||1),0);let pick=Math.random()*total;const index=pool.findIndex(item=>{pick-=Math.max(.01,item.weight||1);return pick<=0});result.push(pool.splice(index<0?pool.length-1:index,1)[0])}return result}
