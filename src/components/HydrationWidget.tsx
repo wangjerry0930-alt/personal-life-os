@@ -1,8 +1,9 @@
+import { localDateKey } from '../domain/date';
 import { useEffect, useState } from 'react';
 import Icon from './Icon';
 import type { HydrationState } from '../domain/types';
 
-const date=()=>new Date().toISOString().slice(0,10); const fresh=():HydrationState=>({date:date(),goalMl:2500,consumedMl:0,entries:[],reminderMinutes:60,notificationsEnabled:false});
+const date=()=>localDateKey(); const fresh=():HydrationState=>({date:date(),goalMl:2500,consumedMl:0,entries:[],reminderMinutes:60,notificationsEnabled:false});
 export default function HydrationWidget({ data, setData }: { data:any; setData:(updater:any)=>void }) {
   const [permission,setPermission]=useState(typeof Notification==='undefined'?'unsupported':Notification.permission); const hydration:HydrationState=data.hydration?.date===date()?data.hydration:fresh(); const [custom,setCustom]=useState('');
   useEffect(()=>{if(!data.hydration||data.hydration.date!==date())setData((current:any)=>({...current,hydration:{...fresh(),goalMl:current.hydration?.goalMl||2500,reminderMinutes:current.hydration?.reminderMinutes||60}}));},[data.hydration,setData]);

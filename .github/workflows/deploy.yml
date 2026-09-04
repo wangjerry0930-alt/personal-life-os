@@ -29,8 +29,14 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Lint
+        run: npm run lint
       - name: Verify application build
-        run: test -f dist/index.html && test -f dist/sw.js || true
+        run: npm run smoke
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -2,16 +2,17 @@ import type { AppData, RepositorySnapshot } from '../domain/types';
 import { seed } from '../domain/seed';
 import { storageAdapter } from './storageAdapter';
 
-export const REPOSITORY_KEY='personal-life-os-repository-v5';
-const legacyKeys=['personal-life-os-people','personal-life-os-person-facts','personal-life-os-conversations','personal-life-os-important-dates','personal-life-os-books','personal-life-os-captures','personal-life-os-resources','personal-life-os-knowledge','personal-life-os-journal-history'];
+export const REPOSITORY_KEY='personal-life-os-repository-v6';
+export const CURRENT_SCHEMA_VERSION=6;
 const now=()=>new Date().toISOString();
-const empty=(data:AppData):RepositorySnapshot=>({schemaVersion:5,data,activities:[],habitLogs:[],taskCompletions:[],skillLogs:[],recallAttempts:[],relations:[],updatedAt:now()});
-export function migrateLegacyData():RepositorySnapshot {
-  const current=storageAdapter.get<RepositorySnapshot|null>(REPOSITORY_KEY,null);
-  if(current?.schemaVersion===5)return {...current,skillLogs:current.skillLogs||[],recallAttempts:current.recallAttempts||[]};
-  const legacy:Record<string,unknown>={}; legacyKeys.forEach(key=>{if(storageAdapter.has(key))legacy[key]=storageAdapter.get(key,[])});
-  const oldData=storageAdapter.get<AppData|null>('personal-life-os-data',null); const snapshot=empty({...seed,...(oldData||{}),projects:oldData?.projects||seed.projects,goals:oldData?.goals||seed.goals});
-  const legacyActivities=Array.isArray(oldData?.activities)?oldData.activities:[];
-  snapshot.activities=legacyActivities.map((item:any,index)=>{const occurredAt=typeof item.time==='string'&&item.time.includes('T')?item.time:now();return{id:`legacy-activity-${index}-${Date.now()}`,createdAt:occurredAt,updatedAt:occurredAt,type:'Custom',title:item.label||'Legacy activity',occurredAt,source:'Legacy',metadata:{legacyType:item.type,legacyMeta:item.meta}}});
-  snapshot.legacy=legacy; storageAdapter.set(REPOSITORY_KEY,snapshot); storageAdapter.set('personal-life-os-migration-v5',{completedAt:now(),legacyKeys}); return snapshot;
+const legacyKeys=['personal-life-os-people','personal-life-os-person-facts','personal-life-os-conversations','personal-life-os-important-dates','personal-life-os-books','personal-life-os-captures','personal-life-os-resources','personal-life-os-knowledge','personal-life-os-journal-history','personal-life-os-quest-board-v1','personal-life-os-food-v1'];
+const arr=<T,>(value:unknown):T[]=>Array.isArray(value)?value as T[]:[];
+const normalizeData=(oldData:Partial<AppData>|null):AppData=>({...seed,...(oldData||{}),areas:arr(oldData?.areas).length?oldData!.areas!:seed.areas,skills:arr(oldData?.skills).length?oldData!.skills!:seed.skills,tasks:arr(oldData?.tasks),habits:arr(oldData?.habits).length?oldData!.habits!:seed.habits,activities:arr(oldData?.activities),knowledge:arr(oldData?.knowledge),projects:arr(oldData?.projects),goals:arr(oldData?.goals),interests:arr(oldData?.interests),log:oldData?.log||seed.log});
+const empty=(data:AppData):RepositorySnapshot=>({schemaVersion:CURRENT_SCHEMA_VERSION,data,activities:[],habitLogs:[],taskCompletions:[],skillLogs:[],recallAttempts:[],relations:[],people:[],personFacts:[],interactions:[],importantDates:[],books:[],captures:[],knowledgeItems:[],journalEntries:[],resources:[],taskHistory:[],updatedAt:now()});
+export function migrateLegacyData():RepositorySnapshot{
+  const current=storageAdapter.get<Partial<RepositorySnapshot>|null>(REPOSITORY_KEY,storageAdapter.get<Partial<RepositorySnapshot>|null>('personal-life-os-repository-v5',null));
+  if(current&&current.data){const normalized={...empty(normalizeData(current.data)),...current,schemaVersion:CURRENT_SCHEMA_VERSION,data:normalizeData(current.data),activities:arr(current.activities),habitLogs:arr(current.habitLogs),taskCompletions:arr(current.taskCompletions),skillLogs:arr(current.skillLogs),recallAttempts:arr(current.recallAttempts),relations:arr(current.relations)} as RepositorySnapshot;if(current.schemaVersion!==CURRENT_SCHEMA_VERSION)storageAdapter.set(REPOSITORY_KEY,normalized);return normalized}
+  const legacy:Record<string,unknown>={};for(const key of legacyKeys){if(storageAdapter.has(key))legacy[key]=storageAdapter.get(key,null)}
+  const oldData=storageAdapter.get<Partial<AppData>|null>('personal-life-os-data',null);const snapshot=empty(normalizeData(oldData));snapshot.legacy=legacy;snapshot.people=arr(legacy['personal-life-os-people']);snapshot.personFacts=arr(legacy['personal-life-os-person-facts']);snapshot.interactions=arr(legacy['personal-life-os-conversations']);snapshot.importantDates=arr(legacy['personal-life-os-important-dates']);snapshot.books=arr(legacy['personal-life-os-books']);snapshot.captures=arr(legacy['personal-life-os-captures']);snapshot.resources=arr(legacy['personal-life-os-resources']);snapshot.knowledgeItems=arr(legacy['personal-life-os-knowledge']);snapshot.journalEntries=arr(legacy['personal-life-os-journal-history']);snapshot.questBoard=legacy['personal-life-os-quest-board-v1'];snapshot.food=legacy['personal-life-os-food-v1'];
+  const legacyActivities=arr<any>(oldData?.activities);snapshot.activities=legacyActivities.map((item,index)=>{const occurredAt=typeof item.time==='string'&&item.time.includes('T')?item.time:now();return{id:`legacy-activity-${index}`,createdAt:occurredAt,updatedAt:occurredAt,type:'Custom',title:item.label||'Legacy activity',occurredAt,source:'Legacy',metadata:{legacyType:item.type,legacyMeta:item.meta}}});storageAdapter.set(REPOSITORY_KEY,snapshot);storageAdapter.set('personal-life-os-migration-v6',{completedAt:now(),from:'legacy/localStorage',schemaVersion:CURRENT_SCHEMA_VERSION});return snapshot;
 }

@@ -1,3 +1,4 @@
+import { localDateKey } from '../domain/date';
 import { useMemo, useState } from 'react';
 import Icon from './Icon';
 import { useAppStore } from '../store/useAppStore';
@@ -17,7 +18,7 @@ import { calculateBookImportance, rankingWarning } from '../services/bookImporta
 import { formatSourceReference, validateCitation } from '../services/bookSourceService';
 import { validateBook } from '../services/bookValidationService';
 
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>localDateKey();
 function analyze(text:string):Pick<Book,'chapters'|'chunks'|'summary'|'concepts'|'recalls'>{
   const clean=text.replace(/\s+/g,' ').trim(); const parts=clean.split(/(?=(?:chapter|第\s*\d+\s*章|#{1,3}\s+)[^.!?。！？]{2,80})/i).filter(x=>x.length>80); const chapters=(parts.length?parts:clean.match(/.{1,1800}/g)||[]).slice(0,30).map((x,i)=>{const heading=x.match(/^(chapter\s+\d+|第\s*\d+\s*章|#{1,3}\s+[^.!?。！？]{2,60})/i);return heading?.[0]?.replace(/^#+\s*/,'')||`Section ${i+1}`});
   const sentences=clean.split(/(?<=[.!?。！？])\s+/).filter(x=>x.length>35); const candidates=Array.from(new Set(sentences.map(x=>x.replace(/^(chapter\s+\d+|第\s*\d+\s*章)[:：]?\s*/i,'').trim()).filter(x=>x.length>30))).slice(0,24); const concepts:Concept[]=candidates.map((sentence,i)=>{const name=sentence.split(/[,:：，。]/)[0].slice(0,42);return{id:`concept-${Date.now()}-${i}`,name,summary:sentence.slice(0,220),tier:i<8?1:i<15?2:i<21?3:4,chapter:chapters[Math.min(i,Math.max(chapters.length-1,0))]||'Main text',pageRange:`Source ${i+1}`,difficulty:i<8?'Core':'Advanced',learned:false}});

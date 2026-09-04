@@ -1,8 +1,9 @@
+import { localDateKey } from '../domain/date';
 import { useState, type ReactNode } from 'react';
 import Icon from './Icon';
 import type { Person, PersonFact as Fact, Interaction as Conversation, ImportantDate } from '../domain/people';
 import { personFactRepository, interactionRepository, importantDateRepository } from '../repositories/legacyRepositories';
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>localDateKey();
 const categories=['Preference','Dislike','Habit','Skill','Education','Career','Family','Food','Interest','Personality','Goal','Important Info','Other'];
 const channels=['Face to Face','WhatsApp','WeChat','Email','Phone','Discord','Instagram','Other'];
 
