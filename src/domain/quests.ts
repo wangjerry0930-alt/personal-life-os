@@ -5,11 +5,13 @@ export const rankNames=['Initiate','Beginner','Developing','Intermediate','Advan
 export const questSeedAreas=[
  ...['Neuroscience','Computational Neuroscience','Computational Cognitive Neuroscience','Computational Psychiatry','Decision Making','Metacognition','Agency','Sense of Agency','Controllability','BCI','AI','Machine Learning','Research','Confidence','Attention','Boredom','Flow','Curiosity','EEG','Neural Decoding','Reinforcement Learning','Bayesian Models','Neural Interfaces'],
  ...['Computational Modelling','Python','AI Tools','App Development','GitHub','Signal Processing','自动化','数据分析'],
- ...['Product Thinking','管理','创业','商业模式','领导力','团队管理','市场与增长'],
+ ...['Product Thinking','管理','创业','商业模式','领导力','团队管理','市场与增长','产品思维'],
  ...['剪辑','摄影','内容创作','视觉叙事','视频制作'],
  ...['音乐','长号','声乐','古典音乐','管弦乐','歌剧','音乐制作','编曲'],
  ...['健身','烹饪','咖啡','茶','鸡尾酒','酒吧文化','旅行','美食'],
- ...['中医','易经','相术','塔罗牌','中国哲学']
+ ...['中医','易经','相术','塔罗牌','中国哲学'],
+ ...['AI / Machine Learning','AI 工具','App 开发','Neural Interfaces'],
+ ...['Pokémon','RPG','电子游戏','游戏机制与 Build 研究']
 ];
 const seedDaily=['定义一个核心概念，并写出机制与例子','读一篇摘要，用一句话写出研究问题','只看一张图，解释坐标、条件与结论','写3个主动回忆问题并闭卷回答','比较两个易混概念','找一个经典研究并说明影响','找一个近12个月研究并记录新意','提出一个可证伪假设与预测','识别一个混淆变量或替代解释','画一张5节点概念图','解释一种常用测量或分析方法','检查一项证据的样本与推断边界','把生活现象转成研究问题','提出一个后续实验','用100字总结今天最值得保留的知识'];
 const seedWeekly=['完成一次60–90分钟专题学习并输出一页笔记','完成一个可展示的小项目或实践样品','比较至少3个来源/范例并写综合结论','向他人讲解或演示，并记录反馈','做一次闭卷复盘或技能测评','整理本周证据、错误与下周改进计划'];
