@@ -11,7 +11,7 @@ export async function ocrPdfFile(file:File,language:OcrLanguage,onProgress:OcrPr
   const {createWorker}=await import('tesseract.js');
   const bytes=new Uint8Array(await file.arrayBuffer());
   const pdf=await pdfjs.getDocument({data:bytes} as any).promise;
-  const worker=await createWorker(language);
+  const worker=await createWorker(language.split('+'));
   const pages:BookPage[]=[];
   try{
     for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){
@@ -24,5 +24,7 @@ export async function ocrPdfFile(file:File,language:OcrLanguage,onProgress:OcrPr
       onProgress(pageNumber/pdf.numPages,`Recognized page ${pageNumber} of ${pdf.numPages}`);
     }
   }finally{await worker.terminate();}
-  return {pages,chunks:chunks(pages),warnings:pages.filter(page=>!normalize(page.text)).map(page=>`Page ${page.pageNumber} still contains no recognizable text.`),sourceType:'pdf'};
+  const recognized=chunks(pages);
+  if(!recognized.length)throw new Error('OCR finished but no readable text was recognized. Try Chinese + English or a higher-quality PDF.');
+  return {pages,chunks:recognized,warnings:pages.filter(page=>!normalize(page.text)).map(page=>`Page ${page.pageNumber} still contains no recognizable text.`),sourceType:'pdf'};
 }
