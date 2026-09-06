@@ -2,44 +2,54 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
-type GrowthContext = {
-  goals?: string[];
-  areas?: Array<{ name: string; focus: string; progress: number }>;
-  skills?: Array<{ name: string; progress: number; practiceCount: number }>;
-  tasks?: Array<{ title: string; status: string; difficulty: string }>;
-  journal?: { learned?: string; progress?: string; problems?: string; tomorrow?: string };
+type Input = {
+  kind?: 'book-extract' | 'book-answer';
+  book?: { id?: string; title?: string; chunks?: Array<{ id?: string; text: string; pageStart: number; pageEnd: number; chunkIndex: number }> };
+  context?: unknown;
+  question?: string;
+  evidence?: unknown;
+  goals?: unknown;
+  areas?: unknown;
+  skills?: unknown;
+  tasks?: unknown;
+  journal?: unknown;
 };
-type BookRequest = { kind?: string; book?: { title?: string; chunks?: Array<{ text: string; pageStart: number; pageEnd: number; chunkIndex: number }> }; context?: { areas?: string[]; skills?: string[]; goals?: string[] } };
 
-Deno.serve(async (request) => {
+const outputText = (body: any) => body.output_text || (body.output || [])
+  .flatMap((item: any) => item.content || [])
+  .filter((item: any) => item.type === 'output_text' && item.text)
+  .map((item: any) => item.text)
+  .join('\n');
+
+Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) throw new Error('OPENAI_API_KEY is not configured');
-    const context = await request.json() as GrowthContext & BookRequest;
-    const isBookAnalysis = context.kind === 'book-extract';
-    const isBookAnswer = context.kind === 'book-answer';
+    const input = await request.json() as Input;
+    const isBook = input.kind === 'book-extract' || input.kind === 'book-answer';
+    const instructions = input.kind === 'book-extract'
+      ? 'Analyze only the supplied book chunks. Return ONLY valid JSON with keys bookType, coreThesis, concepts, recalls. Return at most 8 concepts and 8 recall questions. Every concept sourceChunkIds value must use an id supplied in the chunks.'
+      : input.kind === 'book-answer'
+        ? 'Answer only from the supplied book excerpts. Return ONLY valid JSON with keys answer, confidence, insufficientEvidence, citations, followUpQuestions. Use only supplied chunk IDs for citations.'
+        : 'Return three small, concrete next steps and one observation in concise plain text.';
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: Deno.env.get('OPENAI_MODEL') || 'gpt-5',
-        store: false,
-        instructions: isBookAnalysis ? 'You analyze only the supplied book chunks. Do not use outside knowledge. Return valid JSON matching the schema. Rank concepts by centrality, evidence, dependency and relevance to the user context. Include only claims supported by the chunks.' : isBookAnswer ? 'Answer only from the supplied book excerpts. If the excerpts do not support the answer, set insufficientEvidence to true and say so. Return valid JSON with citations using only supplied chunk IDs.' : 'You are a supportive personal growth assistant. Respect the user\'s existing goals; provide three small, concrete next steps and one observation. Return concise plain text with no invented facts.',
-        input: JSON.stringify(context),
-      }),
+      signal: AbortSignal.timeout(50000),
+      body: JSON.stringify({ model: Deno.env.get('OPENAI_MODEL') || 'gpt-5-mini', store: false, instructions, input: JSON.stringify(input) }),
     });
     const body = await response.json();
-    if (!response.ok) return new Response(JSON.stringify({ error: body.error?.message || 'OpenAI request failed' }), { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    const text = body.output_text || (body.output || [])
-      .flatMap((item: { content?: Array<{ type?: string; text?: string }> }) => item.content || [])
-      .filter((item: { type?: string; text?: string }) => item.type === 'output_text' && item.text)
-      .map((item: { type?: string; text?: string }) => item.text)
-      .join('\n');
-    if (isBookAnalysis || isBookAnswer) { try { return new Response(JSON.stringify({ result: JSON.parse(text) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); } catch { return new Response(JSON.stringify({ error: 'The AI returned invalid structured book output.' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); } }
-    return new Response(JSON.stringify({ text: text || 'No recommendation text was returned.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!response.ok) return new Response(JSON.stringify({ error: body.error?.message || 'OpenAI request failed' }), { status: response.status, headers: jsonHeaders });
+    const text = outputText(body);
+    if (isBook) {
+      try { return new Response(JSON.stringify({ result: JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()) }), { headers: jsonHeaders }); }
+      catch { return new Response(JSON.stringify({ error: 'The AI returned invalid structured book output.' }), { status: 502, headers: jsonHeaders }); }
+    }
+    return new Response(JSON.stringify({ text: text || 'No recommendation text was returned.' }), { headers: jsonHeaders });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), { status: 500, headers: jsonHeaders });
   }
 });
