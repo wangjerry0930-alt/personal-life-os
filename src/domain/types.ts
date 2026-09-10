@@ -25,7 +25,8 @@ export interface ItemDefinition{id:string;name:string;description:string;categor
 export interface InventoryItem extends BaseEntity{itemDefinitionId:string;quantity:number;acquiredAt:string;source:string;expiresAt?:string;metadata?:Record<string,unknown>}
 export interface InventoryTransaction extends BaseEntity{itemDefinitionId:string;quantity:number;direction:'ADD'|'REMOVE';reason:string;sourceId?:string;metadata?:Record<string,unknown>}
 export interface GamingAllowance{date:string;baseMinutes:number;activatedVoucherMinutes:number;bonusMinutes:number;usedMinutes:number;overageMinutes:number}
-export interface RewardState{credits:number;tickets:number;masterTokens:number;transactions:RewardTransaction[];inventory:InventoryItem[];inventoryTransactions:InventoryTransaction[];allowances:GamingAllowance[];doubleRewardArmed:boolean}
+export interface RewardConfig{weekdayActivationCap:number;weekendActivationCap:number;allowOverage:boolean;gameVoucherPrices:Record<string,number>}
+export interface RewardState{credits:number;tickets:number;masterTokens:number;transactions:RewardTransaction[];inventory:InventoryItem[];inventoryTransactions:InventoryTransaction[];allowances:GamingAllowance[];doubleRewardArmed:boolean;config:RewardConfig}
 export interface HabitLog extends BaseEntity{habitId:string;date:string;completed:boolean;value?:number}
 export interface TaskCompletion extends BaseEntity{taskId:string;completedAt:string;durationMinutes?:number;source?:string}
 export interface SkillLog extends BaseEntity{skillId:string;durationMinutes:number;occurredAt:string;areaId?:string;note?:string}
