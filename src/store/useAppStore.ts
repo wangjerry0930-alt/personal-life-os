@@ -7,6 +7,7 @@ import { bootstrapUserProfile } from '../services/profileBootstrapService';
 import { seed } from '../domain/seed';
 import { localDateKey } from '../domain/date';
 import { completeQuest, undoQuest, type QuestBoardState } from '../domain/questActions';
+import { grantReward, rewardForQuest } from '../services/rewardService';
 
 type Updater=AppData|((data:AppData)=>AppData);
 const listeners=new Set<()=>void>();
