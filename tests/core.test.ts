@@ -6,6 +6,9 @@ import { migrateLegacyData, REPOSITORY_KEY } from '../src/repositories/migration
 import { saveSnapshot } from '../src/repositories/appRepository';
 import { recipeIdsForMealPlan, upsertMealPlanForSlot } from '../src/domain/mealPlan';
 import { textLayerLooksCorrupted } from '../src/services/bookParser';
+import { createManualTimeEntry, createTaskTimeEntry, saveTrackedTimeEntry } from '../src/services/timeTrackingService';
+import { getGamingAllowance } from '../src/services/rewardService';
+import { loadSnapshot } from '../src/repositories/appRepository';
 
 const storage=new Map<string,string>();
 const fakeStorage={getItem:(key:string)=>storage.get(key)||null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key),clear:()=>storage.clear(),key:(index:number)=>Array.from(storage.keys())[index]||null,get length(){return storage.size}};
@@ -20,4 +23,5 @@ describe('core domain invariants',()=>{
   it('round trips a complete repository snapshot',()=>{const original=migrateLegacyData();const snapshot={...original,books:[{id:'book'}],food:{plans:[{date:'2026-09-04',slot:'Dinner',recipeIds:['r1','r2']}]},taskHistory:[{taskId:'t',date:'2026-09-04'}]};saveSnapshot(snapshot);const restored=migrateLegacyData();expect(restored.books).toEqual([{id:'book'}]);expect(restored.food).toEqual(snapshot.food);expect(restored.taskHistory).toEqual(snapshot.taskHistory)});
   it('keeps a meal slot unique and preserves every dish',()=>{const first={id:'m1',date:'2026-09-04',slot:'Dinner',recipeId:'r1',recipeIds:['r1','r2'],status:'PLANNED'};const second={id:'m2',date:'2026-09-04',slot:'Dinner',recipeId:'r3',status:'PLANNED'};const plans=upsertMealPlanForSlot([first],second);expect(plans).toHaveLength(1);expect(recipeIdsForMealPlan(plans[0])).toEqual(['r3'])});
   it('rejects visibly corrupted PDF text layers',()=>{const corrupted=Array(5).fill('THE WILLPOWER INSTINCT 2 NRIRAE IR 28 |_ = bp ol re AEA').join(' ');expect(textLayerLooksCorrupted(corrupted)).toBe(true);const readable=Array(5).fill('The willpower instinct describes self control and behavior in a clear sentence.').join(' ');expect(textLayerLooksCorrupted(readable)).toBe(false)});
+  it('persists task time and consumes gaming allowance',()=>{const snapshot=migrateLegacyData();snapshot.data.tasks=[{id:'task-1',title:'Study',description:'',minutes:20,difficulty:'Easy',category:'Daily progress',status:'todo'}];saveSnapshot(snapshot);saveTrackedTimeEntry(createTaskTimeEntry(snapshot.data.tasks[0],'2026-09-04T10:00:00Z','2026-09-04T10:20:00Z',20));expect(loadSnapshot().data.tasks[0].trackedMinutes).toBe(20);saveTrackedTimeEntry(createManualTimeEntry('Game','Entertainment','2026-09-04T11:00:00Z','2026-09-04T11:30:00Z',30,'','Gaming'));expect(getGamingAllowance('2026-09-04').usedMinutes).toBe(30)});
 });
