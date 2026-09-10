@@ -7,7 +7,7 @@ import { saveSnapshot } from '../src/repositories/appRepository';
 import { recipeIdsForMealPlan, upsertMealPlanForSlot } from '../src/domain/mealPlan';
 import { textLayerLooksCorrupted } from '../src/services/bookParser';
 import { createManualTimeEntry, createTaskTimeEntry, saveTrackedTimeEntry } from '../src/services/timeTrackingService';
-import { getGamingAllowance } from '../src/services/rewardService';
+import { getGamingAllowance, getRewardState } from '../src/services/rewardService';
 import { activateQuestFreeze } from '../src/services/rewardService';
 import { loadSnapshot } from '../src/repositories/appRepository';
 
@@ -27,4 +27,5 @@ describe('core domain invariants',()=>{
   it('persists task time and consumes gaming allowance',()=>{const snapshot=migrateLegacyData();snapshot.data.tasks=[{id:'task-1',title:'Study',description:'',minutes:20,difficulty:'Easy',category:'Daily progress',status:'todo'}];saveSnapshot(snapshot);saveTrackedTimeEntry(createTaskTimeEntry(snapshot.data.tasks[0],'2026-09-04T10:00:00Z','2026-09-04T10:20:00Z',20));expect(loadSnapshot().data.tasks[0].trackedMinutes).toBe(20);saveTrackedTimeEntry(createManualTimeEntry('Game','Entertainment','2026-09-04T11:00:00Z','2026-09-04T11:30:00Z',30,'','Gaming'));expect(getGamingAllowance('2026-09-04').usedMinutes).toBe(30)});
   it('makes quest freeze idempotent for the same local day',()=>{const snapshot=migrateLegacyData();const now=new Date().toISOString();snapshot.rewards.inventory=[{id:'freeze',createdAt:now,updatedAt:now,itemDefinitionId:'quest-freeze',quantity:2,acquiredAt:now,source:'test'}];saveSnapshot(snapshot);expect(activateQuestFreeze('test-freeze')).toBe(true);expect(activateQuestFreeze('test-freeze-again')).toBe(false);expect(loadSnapshot().rewards.inventory[0].quantity).toBe(1)});
   it('adds new reward prices without overwriting a custom legacy price',()=>{const snapshot=migrateLegacyData();saveSnapshot({...snapshot,rewards:{...snapshot.rewards,config:{...snapshot.rewards.config,gameVoucherPrices:{'game-15':99}}}});const migrated=migrateLegacyData();expect(migrated.rewards.config.gameVoucherPrices['game-15']).toBe(99);expect(migrated.rewards.config.gameVoucherPrices['game-90']).toBe(75);expect(migrated.rewards.config.gameVoucherPrices['game-120']).toBe(95)});
+  it('grants the all-daily bonus once when all assigned quests are complete',()=>{const snapshot=migrateLegacyData();const now=new Date().toISOString();snapshot.rewards.transactions=[1,2,3].map((_,index)=>({id:`q-${index}`,createdAt:now,updatedAt:now,currencyType:'CREDITS' as const,amount:5,direction:'EARN' as const,reason:'Quest',sourceType:'Quest',sourceId:`quest-${index}`}));saveSnapshot(snapshot);expect(getRewardState().transactions.filter(item=>item.sourceType==='DailyBonusAll')).toHaveLength(1);expect(getRewardState().transactions.filter(item=>item.sourceType==='DailyBonusAll')).toHaveLength(1)});
 });
