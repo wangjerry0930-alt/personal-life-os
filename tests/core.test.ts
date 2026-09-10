@@ -8,6 +8,7 @@ import { recipeIdsForMealPlan, upsertMealPlanForSlot } from '../src/domain/mealP
 import { textLayerLooksCorrupted } from '../src/services/bookParser';
 import { createManualTimeEntry, createTaskTimeEntry, saveTrackedTimeEntry } from '../src/services/timeTrackingService';
 import { getGamingAllowance } from '../src/services/rewardService';
+import { activateQuestFreeze } from '../src/services/rewardService';
 import { loadSnapshot } from '../src/repositories/appRepository';
 
 const storage=new Map<string,string>();
@@ -24,4 +25,5 @@ describe('core domain invariants',()=>{
   it('keeps a meal slot unique and preserves every dish',()=>{const first={id:'m1',date:'2026-09-04',slot:'Dinner',recipeId:'r1',recipeIds:['r1','r2'],status:'PLANNED'};const second={id:'m2',date:'2026-09-04',slot:'Dinner',recipeId:'r3',status:'PLANNED'};const plans=upsertMealPlanForSlot([first],second);expect(plans).toHaveLength(1);expect(recipeIdsForMealPlan(plans[0])).toEqual(['r3'])});
   it('rejects visibly corrupted PDF text layers',()=>{const corrupted=Array(5).fill('THE WILLPOWER INSTINCT 2 NRIRAE IR 28 |_ = bp ol re AEA').join(' ');expect(textLayerLooksCorrupted(corrupted)).toBe(true);const readable=Array(5).fill('The willpower instinct describes self control and behavior in a clear sentence.').join(' ');expect(textLayerLooksCorrupted(readable)).toBe(false)});
   it('persists task time and consumes gaming allowance',()=>{const snapshot=migrateLegacyData();snapshot.data.tasks=[{id:'task-1',title:'Study',description:'',minutes:20,difficulty:'Easy',category:'Daily progress',status:'todo'}];saveSnapshot(snapshot);saveTrackedTimeEntry(createTaskTimeEntry(snapshot.data.tasks[0],'2026-09-04T10:00:00Z','2026-09-04T10:20:00Z',20));expect(loadSnapshot().data.tasks[0].trackedMinutes).toBe(20);saveTrackedTimeEntry(createManualTimeEntry('Game','Entertainment','2026-09-04T11:00:00Z','2026-09-04T11:30:00Z',30,'','Gaming'));expect(getGamingAllowance('2026-09-04').usedMinutes).toBe(30)});
+  it('makes quest freeze idempotent for the same local day',()=>{const snapshot=migrateLegacyData();const now=new Date().toISOString();snapshot.rewards.inventory=[{id:'freeze',createdAt:now,updatedAt:now,itemDefinitionId:'quest-freeze',quantity:2,acquiredAt:now,source:'test'}];saveSnapshot(snapshot);expect(activateQuestFreeze('test-freeze')).toBe(true);expect(activateQuestFreeze('test-freeze-again')).toBe(false);expect(loadSnapshot().rewards.inventory[0].quantity).toBe(1)});
 });
