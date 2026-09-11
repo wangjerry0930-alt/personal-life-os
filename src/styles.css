@@ -89,3 +89,4 @@
 .reward-rarity{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
  .time-entry-delete{border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;margin-left:auto}.time-entry-delete:hover{color:#c65f67}
  .time-entry-notes{display:block;color:var(--ink);font-style:normal;margin-top:3px;white-space:normal}
+ .time-entry-reuse{border:0;background:transparent;color:var(--accent);font-size:11px;cursor:pointer}.time-entry-reuse:hover{text-decoration:underline}
