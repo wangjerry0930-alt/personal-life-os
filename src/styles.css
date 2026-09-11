@@ -90,3 +90,4 @@
  .time-entry-delete{border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;margin-left:auto}.time-entry-delete:hover{color:#c65f67}
  .time-entry-notes{display:block;color:var(--ink);font-style:normal;margin-top:3px;white-space:normal}
  .time-entry-reuse{border:0;background:transparent;color:var(--accent);font-size:11px;cursor:pointer}.time-entry-reuse:hover{text-decoration:underline}
+ .timer-progress{height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0 4px;max-width:360px}.timer-progress i{display:block;height:100%;background:var(--accent);border-radius:inherit;transition:width .3s ease}
