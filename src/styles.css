@@ -107,6 +107,7 @@
 .course-note-card button{justify-self:start}
 .course-note-actions{display:flex;gap:6px;flex-wrap:wrap}
 .course-note-count{color:var(--muted);font-size:11px;font-weight:400}
+.course-next-task-card button{justify-self:start;margin-top:4px}
 .course-overdue{margin:16px 0;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:14px}.course-overdue-list{display:grid;gap:8px;margin-top:12px}.course-overdue-row{display:flex;justify-content:space-between;gap:10px;padding:10px;background:var(--soft);border-radius:8px}.course-overdue-row span{color:var(--muted);font-size:12px}
 .course-overdue-row{align-items:center;flex-wrap:wrap}.course-overdue-row button{margin-left:0}.course-overdue-row button:first-of-type{margin-left:auto}
 .course-today-link{display:flex;justify-content:flex-end;margin:0 0 16px}
