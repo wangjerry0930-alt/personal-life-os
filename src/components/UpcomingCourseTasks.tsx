@@ -1,0 +1,4 @@
+import { useAppStore } from '../store/useAppStore';
+import { localDateKey, addLocalDays } from '../domain/date';
+
+export default function UpcomingCourseTasks(){const{data}=useAppStore();const today=localDateKey();const end=localDateKey(addLocalDays(new Date(),7));const tasks=data.tasks.filter(task=>task.scheduledDate&&task.scheduledDate>today&&task.scheduledDate<=end&&task.notes?.startsWith('Course:')).sort((a,b)=>(a.scheduledDate||'').localeCompare(b.scheduledDate||''));if(!tasks.length)return null;return <section className="upcoming-course-tasks"><div className="section-title"><h3>Upcoming course tasks</h3><span className="muted">Next 7 days · {tasks.length}</span></div><div className="upcoming-course-list">{tasks.map(task=><div className="upcoming-course-row" key={task.id}><div><b>{task.title}</b><small>{task.scheduledDate} · {task.minutes} min · {task.category}</small></div><span>{task.status==='done'?'Done':'Planned'}</span></div>)}</div></section>}
