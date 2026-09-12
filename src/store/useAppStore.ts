@@ -12,6 +12,7 @@ import { rewardForQuest } from '../services/rewardService';
 type Updater=AppData|((data:AppData)=>AppData);
 const listeners=new Set<()=>void>();
 let repository=bootstrapUserProfile(loadSnapshot());
+if(typeof window!=='undefined')window.addEventListener('life-os-repository-changed',()=>{repository=loadSnapshot();currentData=repository.data;listeners.forEach(listener=>listener())});
 let currentData:AppData=repository.data||seed;
 
 const now=()=>new Date().toISOString();
