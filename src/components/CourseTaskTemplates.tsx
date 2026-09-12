@@ -6,6 +6,7 @@ import { addLocalDays, localDateKey } from '../domain/date';
 const templates = { Preview: ['Read the assigned chapter', 'Write 3 questions before class'], Study: ['Review lecture notes', 'Create a one-page concept summary'], Review: ['Recall the key concepts from memory', 'Complete practice questions'], Assignment: ['Break the assignment into the next small step', 'Review requirements and submit a draft'], Exam: ['Build a topic checklist', 'Do a timed practice set'] } as const;
 type Kind = keyof typeof templates;
 const reviewOffsets = [0, 1, 2, 4, 7, 14, 28];
+const defaultMinutes: Record<Kind, string> = { Preview: '20', Study: '30', Review: '15', Assignment: '45', Exam: '60' };
 
 export default function CourseTaskTemplates() {
   const { data, setData, toggleTask } = useAppStore();
@@ -13,7 +14,7 @@ export default function CourseTaskTemplates() {
   const [course, setCourse] = useState('');
   const [kind, setKind] = useState<Kind>('Preview');
   const [topic, setTopic] = useState('');
-  const [minutes, setMinutes] = useState('30');
+  const [minutes, setMinutes] = useState(defaultMinutes.Preview);
   const [custom, setCustom] = useState('');
   const [areaId, setAreaId] = useState('');
   const [skillId, setSkillId] = useState('');
@@ -54,7 +55,7 @@ export default function CourseTaskTemplates() {
     {open && <div className="modal-backdrop" onMouseDown={() => setOpen(false)}><form className="create-modal" onSubmit={event => { event.preventDefault(); add(selectedTitle); }} onMouseDown={event => event.stopPropagation()}>
       <div className="modal-head"><div><span className="pill purple">COURSE TASK</span><h2>Add a university study task</h2></div><button type="button" className="modal-close" onClick={() => setOpen(false)}>×</button></div>
       <label>Course name<input autoFocus value={course} onChange={event => setCourse(event.target.value)} placeholder="e.g. Cognitive Neuroscience"/></label>
-      <div className="form-two"><label>Task type<select value={kind} onChange={event => { setKind(event.target.value as Kind); setCustom(''); setCustomMode(false); }}>{Object.keys(templates).map(item => <option key={item}>{item}</option>)}</select></label><label>Minutes<input type="number" min="5" max="480" value={minutes} onChange={event => setMinutes(event.target.value)}/></label></div>
+      <div className="form-two"><label>Task type<select value={kind} onChange={event => { const nextKind = event.target.value as Kind; setKind(nextKind); setMinutes(defaultMinutes[nextKind]); setCustom(''); setCustomMode(false); }}>{Object.keys(templates).map(item => <option key={item}>{item}</option>)}</select></label><label>Minutes<input type="number" min="5" max="480" value={minutes} onChange={event => setMinutes(event.target.value)}/></label></div>
       <div className="form-two"><label>Learning Area<select value={areaId} onChange={event => setAreaId(event.target.value)}><option value="">No area</option>{data.areas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label><label>Skill<select value={skillId} onChange={event => setSkillId(event.target.value)}><option value="">No skill</option>{data.skills.map(skill => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label></div>
       <label>Planned date<input type="date" value={date} onChange={event => setDate(event.target.value)}/></label><label>Topic / week<input value={topic} onChange={event => setTopic(event.target.value)} placeholder="e.g. Week 4 · decision making"/></label>
       <label className="check-label"><input type="checkbox" checked={reviewPlan} onChange={event => setReviewPlan(event.target.checked)}/> Create review tasks at 1, 2, 4, 7, 14 and 28 days</label>
