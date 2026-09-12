@@ -8,7 +8,7 @@ type Kind = keyof typeof templates;
 const reviewOffsets = [0, 1, 2, 4, 7, 14, 28];
 
 export default function CourseTaskTemplates() {
-  const { data, setData } = useAppStore();
+  const { data, setData, toggleTask } = useAppStore();
   const [open, setOpen] = useState(false);
   const [course, setCourse] = useState('');
   const [kind, setKind] = useState<Kind>('Preview');
@@ -20,9 +20,11 @@ export default function CourseTaskTemplates() {
   const [date, setDate] = useState(localDateKey());
   const [customMode, setCustomMode] = useState(false);
   const [reviewPlan, setReviewPlan] = useState(true);
+  const [hubOpen, setHubOpen] = useState(true);
   const selectedTitle = customMode ? custom : (custom || templates[kind][0]);
   const plannedOffsets = reviewPlan ? reviewOffsets : [0];
   const previewDates = useMemo(() => plannedOffsets.map(offset => localDateKey(addLocalDays(new Date(`${date}T12:00:00`), offset))), [date, reviewPlan]);
+  const courseTasks = data.tasks.filter(task => task.notes?.startsWith('Course:')).sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   const add = (title: string) => {
     if (!course.trim() || !title.trim()) return;
     const tasks = plannedOffsets.map((offset, index) => ({
@@ -43,7 +45,8 @@ export default function CourseTaskTemplates() {
     setCustom(''); setCustomMode(false); setOpen(false);
   };
   return <>
-    <button className="secondary" onClick={() => setOpen(true)}><Icon name="GraduationCap" size={16}/> Course task</button>
+    <section className="uni-course-panel"><div className="section-title"><div><span className="pill purple">UNI COURSE</span><h3>University course plan</h3><span className="muted">{courseTasks.filter(task => task.status !== 'done').length} open · {courseTasks.length} total</span></div><div className="uni-course-actions"><button className="secondary" onClick={() => setOpen(true)}><Icon name="Plus" size={15}/> Add course plan</button><button className="icon-button" onClick={() => setHubOpen(value => !value)} aria-label={hubOpen ? 'Collapse university course plan' : 'Expand university course plan'}>{hubOpen ? '−' : '+'}</button></div></div>{hubOpen && <>{courseTasks.length ? <div className="uni-course-task-list">{courseTasks.map(task => <div className={'uni-course-task '+(task.status === 'done' ? 'done' : '')} key={task.id}><button className="check" onClick={() => toggleTask(task.id)}>{task.status === 'done' ? '✓' : '○'}</button><div><b>{task.title}</b><small>{task.scheduledDate || 'Unscheduled'} · {task.minutes} min · {task.description}</small></div><span>{task.status === 'done' ? 'Done' : 'Planned'}</span></div>)}</div> : <p className="muted">No university course plans yet. Add a preview, study, review, assignment or exam task.</p>}</>}
+    </section>
     {open && <div className="modal-backdrop" onMouseDown={() => setOpen(false)}><form className="create-modal" onSubmit={event => { event.preventDefault(); add(selectedTitle); }} onMouseDown={event => event.stopPropagation()}>
       <div className="modal-head"><div><span className="pill purple">COURSE TASK</span><h2>Add a university study task</h2></div><button type="button" className="modal-close" onClick={() => setOpen(false)}>×</button></div>
       <label>Course name<input autoFocus value={course} onChange={event => setCourse(event.target.value)} placeholder="e.g. Cognitive Neuroscience"/></label>
