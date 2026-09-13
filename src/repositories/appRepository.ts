@@ -21,6 +21,9 @@ export const loadSnapshot=():RepositorySnapshot=>{
     food:storageAdapter.has('personal-life-os-food-v1')?storageAdapter.get('personal-life-os-food-v1',snapshot.food):snapshot.food,
     timeEntries:liveArray('personal-life-os-time-entries',snapshot.timeEntries||[]),
     rewards:snapshot.rewards,
+    courseNames:storageAdapter.has('personal-life-os-course-names-v1')?storageAdapter.get('personal-life-os-course-names-v1',snapshot.courseNames||[]):snapshot.courseNames||[],
+    courseFiles:storageAdapter.has('personal-life-os-course-files-v1')?storageAdapter.get('personal-life-os-course-files-v1',snapshot.courseFiles||{}):snapshot.courseFiles||{},
+    courseNotes:storageAdapter.has('personal-life-os-course-notes-v1')?storageAdapter.get('personal-life-os-course-notes-v1',snapshot.courseNotes||{}):snapshot.courseNotes||{},
   };
 };
 export const saveSnapshot=(snapshot:RepositorySnapshot)=>storageAdapter.set(REPOSITORY_KEY,{...snapshot,updatedAt:new Date().toISOString()});

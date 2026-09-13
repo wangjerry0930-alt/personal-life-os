@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import CourseTaskTemplates from './CourseTaskTemplates';
 import UpcomingCourseTasks from './UpcomingCourseTasks';
 import { useAppStore } from '../store/useAppStore';
 import { localDateKey } from '../domain/date';
 import { addLocalDays } from '../domain/date';
 import { startTaskTimer as beginTaskTimer } from '../services/timeTrackingService';
+import { loadSnapshot, saveSnapshot } from '../repositories/appRepository';
 
 type CourseFile = { id: string; name: string; size: number; type: string; dataUrl: string; reviewedAt?: string; uploadedAt?: string };
 type StoredFiles = Record<string, CourseFile[]>;
 
 const readFiles = (): StoredFiles => {
   try {
-    const parsed = JSON.parse(localStorage.getItem('personal-life-os-course-files-v1') || '{}') as Record<string, CourseFile[] | CourseFile>;
+    const stored = localStorage.getItem('personal-life-os-course-files-v1');
+    const parsed = stored ? JSON.parse(stored) as Record<string, CourseFile[] | CourseFile> : loadSnapshot().courseFiles as Record<string, CourseFile[] | CourseFile>;
     return Object.fromEntries(Object.entries(parsed).map(([course, value]) => [course, Array.isArray(value) ? value : [{ ...value, id: `course-file-${Date.now()}-${course}` }]]));
   } catch { return {}; }
 };
@@ -19,15 +21,16 @@ const readFiles = (): StoredFiles => {
 export default function UniCoursePage({ setPage }: { setPage?: (page: 'Today' | 'TimeTracking') => void }) {
   const { data, setData, toggleTask } = useAppStore();
   const taskCourses = Array.from(new Set(data.tasks.filter(task => task.notes?.startsWith('Course:')).map(task => task.notes?.split(' · ')[1] || 'Course')));
-  const [courseNames, setCourseNames] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('personal-life-os-course-names-v1') || '[]'); } catch { return []; } });
+  const [courseNames, setCourseNames] = useState<string[]>(() => { try { const stored = localStorage.getItem('personal-life-os-course-names-v1'); return stored ? JSON.parse(stored) : loadSnapshot().courseNames || []; } catch { return []; } });
   const [newCourse, setNewCourse] = useState('');
   const courses = Array.from(new Set([...courseNames, ...taskCourses]));
   const [files, setFiles] = useState<StoredFiles>(readFiles);
   const [materialFilter, setMaterialFilter] = useState<'all' | 'todo' | 'reviewed'>('all');
   const [materialQuery, setMaterialQuery] = useState('');
   const [materialSort, setMaterialSort] = useState<'newest' | 'oldest' | 'name'>('newest');
-  const [courseNotes, setCourseNotes] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem('personal-life-os-course-notes-v1') || '{}'); } catch { return {}; } });
-  const saveFiles = (next: StoredFiles) => { setFiles(next); localStorage.setItem('personal-life-os-course-files-v1', JSON.stringify(next)); };
+  const [courseNotes, setCourseNotes] = useState<Record<string, string>>(() => { try { const stored = localStorage.getItem('personal-life-os-course-notes-v1'); return stored ? JSON.parse(stored) : loadSnapshot().courseNotes || {}; } catch { return {}; } });
+  useEffect(() => { saveSnapshot({ ...loadSnapshot(), courseNames, courseFiles: files, courseNotes }); }, [courseNames, files, courseNotes]);
+  const saveFiles = (next: StoredFiles) => { setFiles(next); localStorage.setItem('personal-life-os-course-files-v1', JSON.stringify(next)); saveSnapshot({ ...loadSnapshot(), courseFiles: next }); };
   const upload = (course: string, file: File) => { const reader = new FileReader(); reader.onload = () => { if ((files[course] || []).some(existing => existing.name === file.name)) { window.alert("This file is already uploaded for this course."); return; } const next = { ...files, [course]: [...(files[course] || []), { id: `course-file-${Date.now()}`, name: file.name, size: file.size, type: file.type, dataUrl: String(reader.result), uploadedAt: new Date().toISOString() }] }; saveFiles(next); }; reader.readAsDataURL(file); };
   const formatSize = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   const remove = (course: string, fileId: string, name: string) => { if (!window.confirm(`Delete ${name}?`)) return; const next = { ...files, [course]: (files[course] || []).filter(file => file.id !== fileId) }; if (!next[course].length) delete next[course]; saveFiles(next); };
