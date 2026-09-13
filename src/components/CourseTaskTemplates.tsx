@@ -40,6 +40,7 @@ export default function CourseTaskTemplates({ onStartTimer }: { onStartTimer?: (
       difficulty: 'Medium' as const,
       priority: 'High' as const,
       category: 'Manual' as const,
+      timeCategory: 'Study',
       areaId: areaId || undefined,
       skillId: skillId || undefined,
       scheduledDate: previewDates[index],
