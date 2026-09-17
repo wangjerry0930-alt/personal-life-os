@@ -33,7 +33,7 @@ const specialFamilies:Record<string,string[]>={
  'language.russian':['Vocabulary','Grammar','Listening','Speaking','Reading','Writing','Cyrillic','Cases','Culture'],
  'technical.ai':['ML Foundations','Data Preparation','Model Training','Evaluation','Implementation','Paper Reading','Responsible AI','Projects']
 };
-export function questFamilies(area:string):QuestFamily[]{const archetype=inferArchetype(area);return(specialFamilies[resolveQuestDomain(area)]||familySets[archetype]).map((name,index)=>({id:`${slug(area)}-${slug(name)}`,name,description:`Build ${name.toLowerCase()} capability in ${area}.`,area,archetype,chainOrder:index<6?[`R${Math.max(1,index)}`,`R${Math.min(8,index+1)}`]:undefined}))}
+export function questFamilies(area:string):QuestFamily[]{const archetype=inferArchetype(area);return(specialFamilies[resolveQuestDomain(area)]||familySets[archetype]).map(name=>{const id=`${slug(area)}-${slug(name)}`;return{id,name,description:`Build ${name.toLowerCase()} capability in ${area}.`,area,archetype,chainOrder:Array.from({length:8},(_,index)=>`${id}-r${index+1}`)}})}
 
 const practiceType=(rank:Rank,index:number):QuestType=>rank<=2?(index%4===3?'WEEKLY':'DAILY'):rank<=4?(index%3===0?'DAILY':'WEEKLY'):index%3===2?'CHALLENGE':'WEEKLY';
 const evidenceFor=(type:QuestType,archetype:AreaArchetype):EvidenceType=>type==='DAILY'?'NOTE':archetype==='LANGUAGE'?'AUDIO':archetype==='TECHNICAL'?'CODE':archetype==='FITNESS'?'VIDEO':type==='BOSS'?'FILE':'REFLECTION';
