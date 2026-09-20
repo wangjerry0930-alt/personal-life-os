@@ -2,12 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import AutoCloudSync from './components/AutoCloudSync';
+import SyncStatusToast from './components/SyncStatusToast';
 import App from './App';
 import { APP_VERSION } from './version';
 import './styles.css';
 import './taskTimer.css';
 
-createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><AutoCloudSync/><App/></AppErrorBoundary></StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><AutoCloudSync/><SyncStatusToast/><App/></AppErrorBoundary></StrictMode>);
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',async()=>{
