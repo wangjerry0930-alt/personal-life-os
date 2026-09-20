@@ -1,5 +1,3 @@
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import workerPath from 'tesseract.js/dist/worker.min.js?url';
 import type { BookPage, ParsedBook } from '../domain/bookParsing';
 
 export type OcrLanguage='eng'|'chi_sim+eng';
@@ -9,7 +7,8 @@ const chunks=(pages:BookPage[])=>pages.filter(page=>normalize(page.text)).map((p
 
 /** OCR runs locally in the browser and is only invoked for image-only PDFs. */
 export async function ocrPdfFile(file:File,language:OcrLanguage,onProgress:OcrProgress,signal?:AbortSignal):Promise<ParsedBook>{
-  const {createWorker}=await import('tesseract.js');
+  const [{createWorker},pdfjs,workerModule]=await Promise.all([import('tesseract.js'),import('pdfjs-dist/legacy/build/pdf.mjs'),import('tesseract.js/dist/worker.min.js?url')]);
+  const workerPath=workerModule.default;
   const bytes=new Uint8Array(await file.arrayBuffer());
   const pdf=await pdfjs.getDocument({data:bytes} as any).promise;
   const worker=await createWorker(language.split('+'),1,{workerPath});

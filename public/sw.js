@@ -1,4 +1,4 @@
-const CACHE='personal-life-os-v1580';
+const CACHE='personal-life-os-v1590';
 const BASE=self.registration.scope;
 const APP_SHELL=[BASE,`${BASE}manifest.webmanifest`,`${BASE}icons/app-icon.svg`];
 
