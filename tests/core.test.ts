@@ -12,6 +12,7 @@ import { activateQuestFreeze } from '../src/services/rewardService';
 import { loadSnapshot } from '../src/repositories/appRepository';
 import { inferTaskTimeCategory } from '../src/services/timeTrackingService';
 import { migrateQuest, prerequisitesMet, promotionRequirements, questFamilies, questTemplates, questVariants, renderQuestTemplate, requirementProgress, requirementsMet, resolveQuestDomain, selectBalancedVariants, type Rank } from '../src/domain/quests';
+import { chooseSyncDirection } from '../src/services/supabaseSync';
 
 const storage=new Map<string,string>();
 const fakeStorage={getItem:(key:string)=>storage.get(key)||null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key),clear:()=>storage.clear(),key:(index:number)=>Array.from(storage.keys())[index]||null,get length(){return storage.size}};
@@ -20,6 +21,7 @@ Object.defineProperty(globalThis,'localStorage',{value:fakeStorage,configurable:
 describe('core domain invariants',()=>{
   beforeEach(()=>storage.clear());
   it('builds rank-specific V2 quest families and concrete criteria',()=>{const families=questFamilies('BCI');expect(families.length).toBeGreaterThanOrEqual(5);const r4=questVariants('BCI',4);expect(r4.some(item=>item.title==='Filter and inspect one EEG channel')).toBe(true);expect(r4.every(item=>item.acceptanceCriteria.length>=3)).toBe(true);expect(new Set(r4.map(item=>item.familyId)).size).toBe(families.length)});
+  it('chooses a safe cloud sync direction',()=>{expect(chooseSyncDirection('2026-09-20T10:00:00Z',undefined,undefined)).toBe('push');expect(chooseSyncDirection('2026-09-20T10:00:00Z','2026-09-19T10:00:00Z',undefined)).toBe('pull');expect(chooseSyncDirection('2026-09-20T12:00:00Z','2026-09-20T10:00:00Z','2026-09-20T10:00:00Z')).toBe('push');expect(chooseSyncDirection('2026-09-20T10:00:00Z','2026-09-20T12:00:00Z','2026-09-20T10:00:00Z')).toBe('pull');expect(chooseSyncDirection('2026-09-20T10:00:00Z','2026-09-20T10:00:00Z','2026-09-20T10:00:00Z')).toBe('none')});
   it('separates promotion requirements from the promotion quest',()=>{const requirements=promotionRequirements('RESEARCH');expect(requirements.some(item=>item.type==='PAPER_READ')).toBe(true);expect(requirementsMet(requirements,[])).toBe(false);const promotion=questVariants('BCI',7).find(item=>item.type==='PROMOTION');expect(promotion?.title).not.toContain('Complete 8 Daily')});
   it('provides a real promotion quest at every non-master rank',()=>{for(let rank=1;rank<8;rank++){expect(questVariants('BCI',rank as Rank).some(item=>item.type==='PROMOTION')).toBe(true)}expect(questVariants('BCI',8).some(item=>item.type==='BOSS')).toBe(true)});
   it('scales cumulative promotion requirements by rank',()=>{expect(promotionRequirements('RESEARCH',3).find(item=>item.questType==='DAILY')?.value).toBe(24);expect(promotionRequirements('RESEARCH',3).find(item=>item.type==='PAPER_READ')?.value).toBe(9)});
