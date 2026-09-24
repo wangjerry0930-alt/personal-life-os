@@ -9,7 +9,7 @@ type NodeType='Area'|'Skill'|'Project'|'Resource'|'Task'|'Knowledge';
 type GraphNode={id:string;label:string;type:NodeType;color:string;subtitle:string;progress?:number;page:string};
 type GraphLink={from:string;to:string;label:string};
 const colors:Record<NodeType,string>={Area:'#6f63da',Skill:'#8b7cf6',Project:'#d18b62',Resource:'#62a98b',Task:'#5d91c5',Knowledge:'#b777a8'};
-const icons:Record<NodeType,string>={Area:'Compass',Skill:'Sparkles',Project:'FolderKanban',Resource:'Library',Task:'ListTodo',Knowledge:'BookOpen'};
+const icons:Record<NodeType,keyof typeof import('lucide-react')>={Area:'Compass',Skill:'Sparkles',Project:'FolderKanban',Resource:'Library',Task:'ListTodo',Knowledge:'BookOpen'};
 
 export default function KnowledgeGraph({data,onOpen}:{data:AppData;onOpen?:(page:string)=>void}){
  const[filter,setFilter]=useState<'All'|NodeType>('All');const[query,setQuery]=useState('');const[selectedId,setSelectedId]=useState('');
