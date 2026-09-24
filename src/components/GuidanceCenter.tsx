@@ -14,7 +14,6 @@ const guides = [
   ['Resources','保存值得反复使用的资料。','Add resource 可以保存 Paper、Book、Video、Course、Website、Dataset、Tool、Podcast 或 Note。使用 Inbox、To Read、Reading、Finished、Reference 管理状态；搜索标题、备注和标签，并关联 Learning Area、Skill、Project。','Library'],
   ['Journal','记录每天真正发生的学习。','填写 What did you learn、Biggest progress today、What got in the way、Tomorrow I want to 和 Free notes。完成的任务会自动出现在 Automatically captured；Save today’s log 保存历史，搜索框可以查找日期和反思，点击历史条目查看完整内容。','NotebookPen'],
   ['Analytics','观察长期趋势，而不是只看今天。','查看最近 7 天 Learning time 柱状图、Tasks completed、Active areas、Skill practice、Focus areas 和 Weekly Review。AI Recommendations 根据近期行为生成建议；AI Weekly Review 会保存历史，可随时重新查看。','ChartNoAxesCombined'],
-  ['Graph','查看知识之间的连接。','Knowledge Graph 会显示 Learning Areas、Skills、Projects 和 Resources 的节点与连线。要让关系图变丰富，先在 Resources 中把资料关联到方向、技能或项目；当前图谱是帮助理解结构的可视化，不是关系质量评分。','Share2'],
   ['Settings','管理偏好、AI 和数据。','OpenAI API 区域用于保存或移除 API key；AI Recommendations 使用 Supabase Function URL。Guidance Center 可以重新打开本指南；Theme Picker 可以选择 Lavender、Soft mint、Sky blue、Warm peach；Backup Tools 支持 JSON 导出和导入；Supabase cloud sync 支持上传和恢复 workspace；Reset app data 会清除本地数据，请谨慎使用。','Settings'],
 ] as const;
 
