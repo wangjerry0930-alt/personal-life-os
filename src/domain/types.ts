@@ -10,7 +10,7 @@ export interface Project{id:string;name:string;type:string;status:'Planning'|'In
 export interface Goal{id:string;title:string;period:string;progress:number;detail:string;milestones?:string[]}
 export type ResourceType='Paper'|'Book'|'Video'|'Course'|'Website'|'Dataset'|'Tool'|'Podcast'|'Note';
 export type ResourceStatus='Inbox'|'To Read'|'Reading'|'Finished'|'Reference';
-export interface ResourceItem{id:string;title:string;type:ResourceType;status:ResourceStatus;url:string;notes:string;tags:string[];areaId?:string;skillId?:string;projectId?:string;createdAt:string}
+export interface ResourceItem{id:string;title:string;type:ResourceType;status:ResourceStatus;url:string;notes:string;tags:string[];areaId?:string;skillId?:string;projectId?:string;fileName?:string;fileType?:string;fileSize?:number;fileDataUrl?:string;createdAt:string}
 import type { Interest } from './interests';
 export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog;interests:Interest[];hydration?:HydrationState}
 export interface BaseEntity{id:string;createdAt:string;updatedAt:string;deletedAt?:string}
