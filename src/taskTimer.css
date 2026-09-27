@@ -5,3 +5,12 @@
 .task-detail-head span{color:var(--muted);font-variant-numeric:tabular-nums}
 .task-timer-progress{margin-bottom:10px}
 .task-detail-actions{display:flex;flex-wrap:wrap;gap:8px}
+.task-timer-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.task-timer-choice button{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--text);text-align:left}
+.task-timer-choice button.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.task-timer-choice span{display:flex;min-width:0;flex-direction:column;gap:3px}.task-timer-choice small{color:var(--muted);font-size:9px;line-height:1.35}
+.pomodoro-detail{border-color:#e9a49b;background:linear-gradient(135deg,#fff4f1,var(--card))}.pomodoro-detail.break-phase{border-color:#8cc9b0;background:linear-gradient(135deg,#effaf5,var(--card))}
+.pomodoro-detail .task-timer-progress i{background:#dc6658}.pomodoro-detail.break-phase .task-timer-progress i{background:#4da77e}
+.pomodoro-session-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-3px 0 12px;color:var(--muted);font-size:10px}.pomodoro-session-meta span{display:flex;align-items:center;gap:6px;color:var(--text);font-weight:700}
+.pomodoro-stop{display:flex;align-items:center;gap:6px;border:1px solid #d4675b;border-radius:8px;background:#c9574b;color:#fff;padding:8px 12px}
+@media(max-width:600px){.task-timer-choice{grid-template-columns:1fr}.pomodoro-session-meta{align-items:flex-start;flex-direction:column;gap:5px}}

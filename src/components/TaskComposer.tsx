@@ -16,6 +16,7 @@ export default function TaskComposer() {
   const [projectId, setProjectId] = useState('');
   const [timeCategory, setTimeCategory] = useState('Study');
   const [notes, setNotes] = useState('');
+  const [timerMode, setTimerMode] = useState<'countdown' | 'pomodoro'>('countdown');
 
   const close = () => setOpen(false);
   const add = () => {
@@ -27,6 +28,7 @@ export default function TaskComposer() {
         title: title.trim(),
         description: 'A manually added next step.',
         minutes: Number(minutes) || 20,
+        timerMode,
         difficulty,
         priority: priority as any,
         projectId: projectId || undefined,
@@ -37,7 +39,7 @@ export default function TaskComposer() {
         status: 'todo',
       }, ...current.tasks],
     }));
-    setTitle(''); setNotes(''); setTimeCategory('Study'); setProjectId(''); setScheduledDate(localDateKey()); close();
+    setTitle(''); setNotes(''); setTimeCategory('Study'); setProjectId(''); setScheduledDate(localDateKey()); setTimerMode('countdown'); close();
   };
 
   return <>
@@ -47,6 +49,7 @@ export default function TaskComposer() {
         <div className="modal-head"><div><span className="pill purple">NEW TASK</span><h2>What is the next small step?</h2></div><button type="button" className="modal-close" onClick={close}>×</button></div>
         <label>Task title<input autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Read one paper abstract" /></label>
         <label>Estimated minutes<input type="number" min="1" max="480" value={minutes} onChange={event => setMinutes(event.target.value)} /></label>
+        <div className="task-timer-choice"><button type="button" className={timerMode==='countdown'?'selected':''} onClick={()=>setTimerMode('countdown')}><Icon name="Timer" size={18}/><span><b>Task timer</b><small>Stop at the estimated duration</small></span></button><button type="button" className={timerMode==='pomodoro'?'selected':''} onClick={()=>setTimerMode('pomodoro')}><Icon name="Tomato" size={18}/><span><b>Pomodoro loop</b><small>30 min focus · 5 min break · repeat until stopped</small></span></button></div>
         <label>Plan for<input type="date" value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} /></label>
         <div className="form-two">
           <label>Priority<select value={priority} onChange={event => setPriority(event.target.value)}><option>Low</option><option>Medium</option><option>High</option></select></label>
