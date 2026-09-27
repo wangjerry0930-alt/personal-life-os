@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from './Icon';
 import { useAppStore } from '../store/useAppStore';
 import { localDateKey } from '../domain/date';
+import { startExclusiveTaskTimer } from '../services/taskTimerPersistence';
 
 const categories = ['Study', 'Work', 'Music', 'Entertainment', 'Exercise', 'Life', 'Other'];
 
@@ -19,25 +20,27 @@ export default function TaskComposer() {
   const [timerMode, setTimerMode] = useState<'countdown' | 'pomodoro'>('countdown');
 
   const close = () => setOpen(false);
-  const add = () => {
+  const add = (startNow = false) => {
     if (!title.trim()) return;
+    const task = {
+      id: 'task-' + Date.now(),
+      title: title.trim(),
+      description: 'A manually added next step.',
+      minutes: Number(minutes) || 20,
+      timerMode,
+      difficulty,
+      priority: priority as any,
+      projectId: projectId || undefined,
+      scheduledDate: scheduledDate || undefined,
+      timeCategory: timeCategory === 'Study' ? undefined : timeCategory,
+      notes,
+      category: 'Manual' as const,
+      status: 'todo' as const,
+    };
+    if (startNow) startExclusiveTaskTimer(task.id);
     setData(current => ({
       ...current,
-      tasks: [{
-        id: 'task-' + Date.now(),
-        title: title.trim(),
-        description: 'A manually added next step.',
-        minutes: Number(minutes) || 20,
-        timerMode,
-        difficulty,
-        priority: priority as any,
-        projectId: projectId || undefined,
-        scheduledDate: scheduledDate || undefined,
-        timeCategory: timeCategory === 'Study' ? undefined : timeCategory,
-        notes,
-        category: 'Manual',
-        status: 'todo',
-      }, ...current.tasks],
+      tasks: [task, ...current.tasks],
     }));
     setTitle(''); setNotes(''); setTimeCategory('Study'); setProjectId(''); setScheduledDate(localDateKey()); setTimerMode('countdown'); close();
   };
@@ -58,7 +61,7 @@ export default function TaskComposer() {
         <label>Time category<select value={timeCategory} onChange={event => setTimeCategory(event.target.value)}>{categories.map(category => <option key={category}>{category}</option>)}</select></label>
         <label>Project<select value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">No project</option>{(data.projects || []).map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
         <label>Notes<textarea rows={2} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional task notes" /></label>
-        <div className="modal-actions"><button type="button" className="secondary" onClick={close}>Cancel</button><button className="primary" disabled={!title.trim()}>Create task</button></div>
+        <div className="modal-actions task-create-actions"><button type="button" className="secondary" onClick={close}>Cancel</button><button type="submit" className="secondary" disabled={!title.trim()}>Create only</button><button type="button" className="primary" disabled={!title.trim()} onClick={()=>add(true)}><Icon name="Play" size={14}/> Create & start</button></div>
       </form>
     </div>}
   </>;

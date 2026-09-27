@@ -14,3 +14,4 @@
 .pomodoro-session-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-3px 0 12px;color:var(--muted);font-size:10px}.pomodoro-session-meta span{display:flex;align-items:center;gap:6px;color:var(--text);font-weight:700}
 .pomodoro-stop{display:flex;align-items:center;gap:6px;border:1px solid #d4675b;border-radius:8px;background:#c9574b;color:#fff;padding:8px 12px}
 @media(max-width:600px){.task-timer-choice{grid-template-columns:1fr}.pomodoro-session-meta{align-items:flex-start;flex-direction:column;gap:5px}}
+.task-create-actions{flex-wrap:wrap}.task-create-actions .primary{min-width:145px;justify-content:center}@media(max-width:520px){.task-create-actions>*{flex:1 1 auto}.task-create-actions .primary{flex-basis:100%}}

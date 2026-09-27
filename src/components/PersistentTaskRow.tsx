@@ -4,7 +4,7 @@ import ActionMenu from './ActionMenu';
 import TaskEditor from './TaskEditor';
 import { useAppStore } from '../store/useAppStore';
 import { capTaskSessionMinutes, createTaskTimeEntry, saveTrackedTimeEntry } from '../services/timeTrackingService';
-import { clearTaskTimer, elapsedTaskSeconds, emptyTaskTimer, loadTaskTimer, pauseTaskClock, saveTaskTimer, startTaskClock, type PersistedTaskTimer } from '../services/taskTimerPersistence';
+import { clearTaskTimer, elapsedTaskSeconds, emptyTaskTimer, loadTaskTimer, pauseTaskClock, saveTaskTimer, startExclusiveTaskTimer, type PersistedTaskTimer } from '../services/taskTimerPersistence';
 
 const FOCUS_SECONDS=30*60;
 const BREAK_SECONDS=5*60;
@@ -15,11 +15,12 @@ const pomodoroState=(elapsed:number)=>{const position=elapsed%CYCLE_SECONDS;cons
 export default function PersistentTaskRow({task,toggle,onDelete}:{task:any;toggle:()=>void;onDelete?:(id:string)=>void}){
  const{data,adjustTaskDifficulty,setData}=useAppStore();const[editing,setEditing]=useState<any>(null);const[open,setOpen]=useState(false);const[timer,setTimer]=useState<PersistedTaskTimer>(()=>loadTaskTimer(task.id));const[now,setNow]=useState(Date.now());const[deleteReady,setDeleteReady]=useState(false);const savingRef=useRef(false);const live=task;const isPomodoro=live.timerMode==='pomodoro';const target=Math.max(1,Number(live.minutes||0)*60);const trackedBase=Number(live.trackedMinutes||0)*60;const sessionTarget=Math.max(0,target-trackedBase);
  useEffect(()=>{setTimer(loadTaskTimer(task.id));setNow(Date.now())},[task.id]);
+ useEffect(()=>{const sync=()=>{setTimer(loadTaskTimer(task.id));setNow(Date.now())};window.addEventListener('life-os-task-timers-changed',sync);return()=>window.removeEventListener('life-os-task-timers-changed',sync)},[task.id]);
  useEffect(()=>{saveTaskTimer(task.id,timer)},[task.id,timer]);
  useEffect(()=>{if(!timer.running)return;const refresh=()=>setNow(Date.now());const interval=window.setInterval(refresh,1000);window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);return()=>{window.clearInterval(interval);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh)}},[timer.running]);
  const rawElapsed=useMemo(()=>elapsedTaskSeconds(timer,now),[timer,now]);const elapsed=isPomodoro?rawElapsed:Math.min(sessionTarget,rawElapsed);const pomo=pomodoroState(elapsed);const trackedElapsed=trackedBase+(isPomodoro?pomo.focusedSeconds:elapsed);
  useEffect(()=>{if(!isPomodoro&&timer.running&&elapsed>=sessionTarget)setTimer({accumulatedSeconds:sessionTarget,startedAt:null,running:false})},[elapsed,isPomodoro,sessionTarget,timer.running]);
- const toggleClock=()=>{const stamp=Date.now();setNow(stamp);setTimer(current=>current.running?pauseTaskClock(current,stamp):startTaskClock(current,stamp))};
+ const toggleClock=()=>{const stamp=Date.now();setNow(stamp);setTimer(timer.running?pauseTaskClock(timer,stamp):startExclusiveTaskTimer(task.id,stamp))};
  const reset=()=>{const next=emptyTaskTimer();setTimer(next);setNow(Date.now());clearTaskTimer(task.id)};
  const saveInline=()=>{if(elapsed<1||savingRef.current)return;savingRef.current=true;const end=new Date();const focusSeconds=isPomodoro?pomo.focusedSeconds:elapsed;const requestedMinutes=Math.max(1,Math.round(focusSeconds/60));const minutes=isPomodoro?requestedMinutes:capTaskSessionMinutes(live,requestedMinutes);if(minutes>0)saveTrackedTimeEntry(createTaskTimeEntry(live,new Date(end.getTime()-focusSeconds*1000).toISOString(),end.toISOString(),minutes,'Study',isPomodoro?`Pomodoro · ${pomo.round} cycle${pomo.round===1?'':'s'} · breaks excluded`:`${live.title} session`));reset();window.setTimeout(()=>{savingRef.current=false},300)};
  const remove=()=>{if(deleteReady){(onDelete?onDelete(live.id):setData(current=>({...current,tasks:current.tasks.filter(item=>item.id!==live.id)})));clearTaskTimer(live.id)}else{setDeleteReady(true);setOpen(true)}};
