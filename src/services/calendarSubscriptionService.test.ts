@@ -1,0 +1,3 @@
+import{describe,expect,it}from'vitest';
+import{parseICalendar}from'./calendarSubscriptionService';
+describe('calendar subscription',()=>{it('parses UCL-style events and folded fields',()=>{const source='BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:ucl-1\r\nDTSTART;TZID=Europe/London:20261001T173000\r\nDTEND;TZID=Europe/London:20261001T193000\r\nSUMMARY:NPP Y3/Y4 Social\r\nLOCATION:Haldane Student Hub\r\nDESCRIPTION:Teaching staff\\nWeek 5\r\nEND:VEVENT\r\nEND:VCALENDAR';expect(parseICalendar(source)).toEqual([{id:'ucl-1',title:'NPP Y3/Y4 Social',date:'2026-10-01',startTime:'17:30',endTime:'19:30',location:'Haldane Student Hub',description:'Teaching staff · Week 5'}])})});
