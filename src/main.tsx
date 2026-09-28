@@ -5,9 +5,11 @@ import AutoCloudSync from './components/AutoCloudSync';
 import SyncStatusToast from './components/SyncStatusToast';
 import App from './App';
 import { APP_VERSION } from './version';
+import { primeCompletionSounds } from './services/completionSoundService';
 import './styles.css';
 import './taskTimer.css';
 
+primeCompletionSounds();
 createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><AutoCloudSync/><SyncStatusToast/><App/></AppErrorBoundary></StrictMode>);
 
 if('serviceWorker' in navigator){
