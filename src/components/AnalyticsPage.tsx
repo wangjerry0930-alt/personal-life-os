@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { getAnalyticsEntries } from '../services/activityService';
 import { loadSnapshot } from '../repositories/appRepository';
 import { localDateKey } from '../domain/date';
+import { getConsistencyStreakStats } from '../services/rewardService';
 
 type Range = 7 | 30;
 
@@ -25,10 +26,7 @@ export default function AnalyticsPage(){
   const bestDay = entries.reduce((best,item)=>item.log.minutes>best.log.minutes?item:best,entries[0]);
   const topSkill = topSkills[0] ? data.skills.find(item=>item.id===topSkills[0][0])?.name : undefined;
   const topProject = topProjects[0] ? ((data.projects||[]).find(item=>item.id===topProjects[0][0])?.name||topProjects[0][0]) : undefined;
-  const completionDates = new Set(snapshot.taskCompletions.map(item=>localDateKey(new Date(item.completedAt))));
-  let learningStreak = 0;
-  const streakCursor = new Date();
-  while(completionDates.has(localDateKey(streakCursor))){ learningStreak++; streakCursor.setDate(streakCursor.getDate()-1); }
+  const learningStreak = getConsistencyStreakStats(snapshot).current;
   const maxMinutes = Math.max(...entries.map(item=>item.log.minutes),1);
   return <div className="content">
     <div className="analytics-header"><div><span className="pill purple">PROGRESS REVIEW</span><h2>See what is compounding.</h2><p className="muted">Your history, measured from one shared repository.</p></div><div className="analytics-range" role="group" aria-label="Analytics range"><button className={range===7?'active':''} onClick={()=>setRange(7)}>7 days</button><button className={range===30?'active':''} onClick={()=>setRange(30)}>30 days</button></div></div>

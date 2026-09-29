@@ -27,7 +27,7 @@ export const loadSnapshot=():RepositorySnapshot=>{
     courseNotes:storageAdapter.has('personal-life-os-course-notes-v1')?storageAdapter.get('personal-life-os-course-notes-v1',snapshot.courseNotes||{}):snapshot.courseNotes||{},
   };
 };
-export const saveSnapshot=(snapshot:RepositorySnapshot)=>storageAdapter.set(REPOSITORY_KEY,{...snapshot,updatedAt:new Date().toISOString()});
+export const saveSnapshot=(snapshot:RepositorySnapshot)=>{storageAdapter.set(REPOSITORY_KEY,{...snapshot,updatedAt:new Date().toISOString()});if(typeof window!=='undefined')window.dispatchEvent(new Event('life-os-repository-changed'))};
 export function saveQuestState(questBoard:unknown,questRefreshLedger?:unknown){
   storageAdapter.set('personal-life-os-quest-board-v1',questBoard);
   if(questRefreshLedger!==undefined)storageAdapter.set('personal-life-os-quest-refresh-v1',questRefreshLedger);
