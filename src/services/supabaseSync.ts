@@ -16,7 +16,7 @@ function config(){
   return{endpoint:url+'/rest/v1/life_os_snapshots',headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json'}};
 }
 
-export function isAutoSyncEnabled(){return localStorage.getItem(SUPABASE_AUTO_SYNC_KEY)!=='false'}
+export function isAutoSyncEnabled(){return localStorage.getItem(SUPABASE_AUTO_SYNC_KEY)==='true'}
 export function hasSupabaseConfig(){return Boolean(config())}
 export type SyncDirection='push'|'pull'|'none';
 export function chooseSyncDirection(localUpdatedAt:string,remoteUpdatedAt:string|undefined,lastSyncedAt:string|undefined):SyncDirection{

@@ -3,7 +3,8 @@ import { getAppSnapshot, restoreAppSnapshot, useAppStore } from '../store/useApp
 import { chooseSyncDirection, getLastSync, hasSupabaseConfig, isAutoSyncEnabled, pullCloudSnapshot, pushCloudSnapshot, recordLastSync, reportSyncStatus, SUPABASE_CONFIG_EVENT } from '../services/supabaseSync';
 
 const PUSH_DELAY=2500;
-const PULL_INTERVAL=60000;
+const PULL_INTERVAL=15*60*1000;
+const RECONCILE_COOLDOWN=5*60*1000;
 
 export default function AutoCloudSync(){
   const{data}=useAppStore();
@@ -11,15 +12,17 @@ export default function AutoCloudSync(){
   const applyingRemote=useRef(false);
   const busy=useRef(false);
   const retry=useRef<number|undefined>(undefined);
+  const lastReconcileAt=useRef(0);
 
   useEffect(()=>{
     let cancelled=false;
     const reconcile=async()=>{
       if(busy.current)return;
+      if(Date.now()-lastReconcileAt.current<RECONCILE_COOLDOWN)return;
       if(!isAutoSyncEnabled()){ready.current=false;reportSyncStatus('paused','Automatic sync is paused');return}
       if(!hasSupabaseConfig()){ready.current=false;reportSyncStatus('paused','Add Supabase settings to enable automatic sync');return}
       if(!navigator.onLine){reportSyncStatus('offline','Offline · changes stay safely on this device');return}
-      busy.current=true;reportSyncStatus('syncing','Checking cloud changes…');
+      busy.current=true;lastReconcileAt.current=Date.now();reportSyncStatus('syncing','Checking cloud changes…');
       try{
         const remote=await pullCloudSnapshot();
         if(cancelled)return;
@@ -32,6 +35,7 @@ export default function AutoCloudSync(){
         }else reportSyncStatus('synced','Everything is up to date',getLastSync());
         ready.current=true;
       }catch(error){
+        lastReconcileAt.current=0;
         reportSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?(error instanceof Error?error.message:'Automatic sync failed'):'Offline · changes stay safely on this device');
         window.clearTimeout(retry.current);retry.current=window.setTimeout(()=>void reconcile(),15000);
       }finally{busy.current=false}
