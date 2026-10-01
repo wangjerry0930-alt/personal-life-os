@@ -1,43 +1,1131 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
-import Icon from './Icon';
-import type {Project,Task,TimeEntry} from '../domain/types';
-import {TIME_CATEGORIES,backdatedTimeRange,capTaskSessionMinutes,createManualTimeEntry,createTaskTimeEntry,deleteTimeEntry,durationToNow,getCategoryTotals,getLastEndTime,getTimeEntries,getWeeklyTotals,inferTaskTimeCategory,remainingTaskMinutes,saveTrackedTimeEntry,taskTargetReached} from '../services/timeTrackingService';
-import {localDateKey} from '../domain/date';
-import {getGamingAllowance,getRewardState} from '../services/rewardService';
-import {useAppStore} from '../store/useAppStore';
-type Subtype='Gaming'|'Novel'|'Video'|'Movie'|'Social Media'|'Other';
-type Active={title:string;category:string;entertainmentSubtype?:Subtype;task?:Task;startedAt:string;elapsed:number;running:boolean};
-const KEY='personal-life-os-active-timer';
-const read=():Active|null=>{try{const raw=localStorage.getItem(KEY);return raw?JSON.parse(raw):null}catch{return null}};
-const fmt=(s:number)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-const CATEGORY_COLORS:Record<string,string>={Study:'#7c6cf2',Work:'#3486d3',Music:'#c766a4',Entertainment:'#ed8a45',Exercise:'#45a879',Life:'#d3a632',Other:'#8b95a5'};
-const categoryColor=(name:string)=>CATEGORY_COLORS[name]||CATEGORY_COLORS.Other;
-const polar=(radius:number,angle:number)=>({x:75+radius*Math.cos(angle*Math.PI/180),y:75+radius*Math.sin(angle*Math.PI/180)});
-const donutPath=(start:number,end:number)=>{const outerStart=polar(68,start),outerEnd=polar(68,end),innerEnd=polar(38,end),innerStart=polar(38,start),large=end-start>180?1:0;return `M ${outerStart.x} ${outerStart.y} A 68 68 0 ${large} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A 38 38 0 ${large} 0 ${innerStart.x} ${innerStart.y} Z`};
-function TimeCategoryChart({totals}:{totals:Record<string,number>}){const[hovered,setHovered]=useState<string|null>(null);const entries=Object.entries(totals).filter(([,value])=>value>0);const total=entries.reduce((sum,[,value])=>sum+value,0);let cursor=-90;const segments=entries.map(([name,value])=>{const start=cursor;cursor+=value/Math.max(1,total)*359.999;return{name,value,start,end:cursor}});const active=segments.find(item=>item.name===hovered);return <div className="time-chart-wrap"><svg className="time-pie" viewBox="0 0 150 150" role="img" aria-label="Time by category">{total?segments.map(segment=><path key={segment.name} d={donutPath(segment.start,segment.end)} fill={categoryColor(segment.name)} onMouseEnter={()=>setHovered(segment.name)} onMouseLeave={()=>setHovered(null)} onFocus={()=>setHovered(segment.name)} onBlur={()=>setHovered(null)} tabIndex={0}><title>{segment.name}: {segment.value} minutes</title></path>):<circle cx="75" cy="75" r="53" fill="none" stroke="var(--surface)" strokeWidth="30"/>}<circle cx="75" cy="75" r="34" fill="var(--card)"/></svg><div className="time-pie-center"><b>{active?active.name:`${total}m`}</b><small>{active?`${active.value} min · ${Math.round(active.value/Math.max(1,total)*100)}%`:'today'}</small></div></div>}
-const groupDayEntries=(entries:TimeEntry[])=>Array.from(entries.reduce((groups,entry)=>{const key=[entry.taskId||entry.title,entry.category,entry.projectId||'',entry.source].join('|');const current=groups.get(key);if(current){current.durationMinutes+=entry.durationMinutes;current.sessionCount+=1;current.entries.push(entry)}else groups.set(key,{...entry,sessionCount:1,entries:[entry]}) ;return groups},new Map<string,TimeEntry&{sessionCount:number;entries:TimeEntry[]}>()).values());
+import { useEffect, useMemo, useRef, useState } from "react";
+import Icon from "./Icon";
+import type { Project, Task, TimeEntry } from "../domain/types";
+import {
+  TIME_CATEGORIES,
+  backdatedTimeRange,
+  capTaskSessionMinutes,
+  createManualTimeEntry,
+  createTaskTimeEntry,
+  deleteTimeEntry,
+  durationToNow,
+  getCategoryTotals,
+  getLastEndTime,
+  getTimeEntries,
+  getWeeklyTotals,
+  inferTaskTimeCategory,
+  remainingTaskMinutes,
+  saveTrackedTimeEntry,
+  taskTargetReached,
+} from "../services/timeTrackingService";
+import { localDateKey } from "../domain/date";
+import { getGamingAllowance, getRewardState } from "../services/rewardService";
+import { useAppStore } from "../store/useAppStore";
+type Subtype =
+  | "Gaming"
+  | "Novel"
+  | "Video"
+  | "Movie"
+  | "Social Media"
+  | "Other";
+type Active = {
+  title: string;
+  category: string;
+  entertainmentSubtype?: Subtype;
+  task?: Task;
+  startedAt: string;
+  elapsed: number;
+  running: boolean;
+};
+const KEY = "personal-life-os-active-timer";
+const read = (): Active | null => {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+const fmt = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+const CATEGORY_COLORS: Record<string, string> = {
+  Study: "#7c6cf2",
+  Work: "#3486d3",
+  Music: "#c766a4",
+  Entertainment: "#ed8a45",
+  Exercise: "#45a879",
+  Life: "#d3a632",
+  Other: "#8b95a5",
+};
+const categoryColor = (name: string) =>
+  CATEGORY_COLORS[name] || CATEGORY_COLORS.Other;
+const polar = (radius: number, angle: number) => ({
+  x: 75 + radius * Math.cos((angle * Math.PI) / 180),
+  y: 75 + radius * Math.sin((angle * Math.PI) / 180),
+});
+const donutPath = (start: number, end: number) => {
+  const outerStart = polar(68, start),
+    outerEnd = polar(68, end),
+    innerEnd = polar(38, end),
+    innerStart = polar(38, start),
+    large = end - start > 180 ? 1 : 0;
+  return `M ${outerStart.x} ${outerStart.y} A 68 68 0 ${large} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A 38 38 0 ${large} 0 ${innerStart.x} ${innerStart.y} Z`;
+};
+function TimeCategoryChart({ totals }: { totals: Record<string, number> }) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  const entries = Object.entries(totals).filter(([, value]) => value > 0);
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  let cursor = -90;
+  const segments = entries.map(([name, value]) => {
+    const start = cursor;
+    cursor += (value / Math.max(1, total)) * 359.999;
+    return { name, value, start, end: cursor };
+  });
+  const active = segments.find((item) => item.name === hovered);
+  return (
+    <div className="time-chart-wrap">
+      <svg
+        className="time-pie"
+        viewBox="0 0 150 150"
+        role="img"
+        aria-label="Time by category"
+      >
+        {total ? (
+          segments.map((segment) => (
+            <path
+              key={segment.name}
+              d={donutPath(segment.start, segment.end)}
+              fill={categoryColor(segment.name)}
+              onMouseEnter={() => setHovered(segment.name)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => setHovered(segment.name)}
+              onBlur={() => setHovered(null)}
+              tabIndex={0}
+            >
+              <title>
+                {segment.name}: {segment.value} minutes
+              </title>
+            </path>
+          ))
+        ) : (
+          <circle
+            cx="75"
+            cy="75"
+            r="53"
+            fill="none"
+            stroke="var(--surface)"
+            strokeWidth="30"
+          />
+        )}
+        <circle cx="75" cy="75" r="34" fill="var(--card)" />
+      </svg>
+      <div className="time-pie-center">
+        <b>{active ? active.name : `${total}m`}</b>
+        <small>
+          {active
+            ? `${active.value} min · ${Math.round((active.value / Math.max(1, total)) * 100)}%`
+            : "today"}
+        </small>
+      </div>
+    </div>
+  );
+}
+const groupDayEntries = (entries: TimeEntry[]) =>
+  Array.from(
+    entries
+      .reduce((groups, entry) => {
+        const key = [
+          entry.taskId || entry.title,
+          entry.category,
+          entry.projectId || "",
+          entry.source,
+        ].join("|");
+        const current = groups.get(key);
+        if (current) {
+          current.durationMinutes += entry.durationMinutes;
+          current.sessionCount += 1;
+          current.entries.push(entry);
+        } else groups.set(key, { ...entry, sessionCount: 1, entries: [entry] });
+        return groups;
+      }, new Map<string, TimeEntry & { sessionCount: number; entries: TimeEntry[] }>())
+      .values(),
+  );
 
-function TaskTimeCheck({tasks,projects,onStart}:{tasks:Task[];projects:Project[];onStart:(task:Task)=>void}){const[view,setView]=useState<'open'|'all'|'attention'>('open');const visible=tasks.filter(task=>view==='all'||view==='open'?view==='all'||task.status!=='done':(task.trackedMinutes||0)>task.minutes||!task.minutes);return <section className="time-panel task-time-check"><div className="time-panel-head"><div><span className="pill purple">TASK CHECK</span><h3>Task and duration</h3><p className="muted">Compare each task’s target with the time actually tracked.</p></div><b>{tasks.filter(task=>task.status!=='done').length} open</b></div><div className="task-time-filters"><button className={view==='open'?'active':''} onClick={()=>setView('open')}>Open</button><button className={view==='attention'?'active':''} onClick={()=>setView('attention')}>Needs attention</button><button className={view==='all'?'active':''} onClick={()=>setView('all')}>All</button></div><div className="task-time-check-list">{visible.map(task=>{const tracked=task.trackedMinutes||0,target=Math.max(1,task.minutes||0),remaining=Math.max(0,target-tracked),project=projects.find(item=>item.id===task.projectId);return <article key={task.id} className={tracked>target?'over-target':''}><div className="task-time-main"><b>{task.title}</b><small>{project?.name||'No project'} · {task.status==='done'?'Completed':'Open'}</small></div><div className="task-time-numbers"><span><small>Target</small><b>{target}m</b></span><span><small>Tracked</small><b>{tracked}m</b></span><span><small>{tracked>target?'Over':'Remaining'}</small><b>{tracked>target?tracked-target:remaining}m</b></span></div><div className="progress"><i style={{width:`${Math.min(100,tracked/target*100)}%`}}/></div>{task.status!=='done'&&<button className="primary" onClick={()=>onStart(task)}><Icon name="Play" size={13}/>{tracked?'Continue':'Start'}</button>}</article>})}{!visible.length&&<p className="muted">No tasks need attention in this view.</p>}</div></section>}
+function TaskTimeCheck({
+  tasks,
+  projects,
+  onStart,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  onStart: (task: Task) => void;
+}) {
+  const [view, setView] = useState<"open" | "all" | "attention">("open");
+  const visible = tasks.filter((task) =>
+    view === "all" || view === "open"
+      ? view === "all" || task.status !== "done"
+      : (task.trackedMinutes || 0) > task.minutes || !task.minutes,
+  );
+  return (
+    <section className="time-panel task-time-check">
+      <div className="time-panel-head">
+        <div>
+          <span className="pill purple">TASK CHECK</span>
+          <h3>Task and duration</h3>
+          <p className="muted">
+            Compare each task’s target with the time actually tracked.
+          </p>
+        </div>
+        <b>{tasks.filter((task) => task.status !== "done").length} open</b>
+      </div>
+      <div className="task-time-filters">
+        <button
+          className={view === "open" ? "active" : ""}
+          onClick={() => setView("open")}
+        >
+          Open
+        </button>
+        <button
+          className={view === "attention" ? "active" : ""}
+          onClick={() => setView("attention")}
+        >
+          Needs attention
+        </button>
+        <button
+          className={view === "all" ? "active" : ""}
+          onClick={() => setView("all")}
+        >
+          All
+        </button>
+      </div>
+      <div className="task-time-check-list">
+        {visible.map((task) => {
+          const tracked = task.trackedMinutes || 0,
+            target = Math.max(1, task.minutes || 0),
+            remaining = Math.max(0, target - tracked),
+            project = projects.find((item) => item.id === task.projectId);
+          return (
+            <article
+              key={task.id}
+              className={tracked > target ? "over-target" : ""}
+            >
+              <div className="task-time-main">
+                <b>{task.title}</b>
+                <small>
+                  {project?.name || "No project"} ·{" "}
+                  {task.status === "done" ? "Completed" : "Open"}
+                </small>
+              </div>
+              <div className="task-time-numbers">
+                <span>
+                  <small>Target</small>
+                  <b>{target}m</b>
+                </span>
+                <span>
+                  <small>Tracked</small>
+                  <b>{tracked}m</b>
+                </span>
+                <span>
+                  <small>{tracked > target ? "Over" : "Remaining"}</small>
+                  <b>{tracked > target ? tracked - target : remaining}m</b>
+                </span>
+              </div>
+              <div className="progress">
+                <i
+                  style={{
+                    width: `${Math.min(100, (tracked / target) * 100)}%`,
+                  }}
+                />
+              </div>
+              {task.status !== "done" && (
+                <button className="primary" onClick={() => onStart(task)}>
+                  <Icon name="Play" size={13} />
+                  {tracked ? "Continue" : "Start"}
+                </button>
+              )}
+            </article>
+          );
+        })}
+        {!visible.length && (
+          <p className="muted">No tasks need attention in this view.</p>
+        )}
+      </div>
+    </section>
+  );
+}
 
-function PastSessionForm({tasks,projects,onSaved,toggleTask}:{tasks:Task[];projects:Project[];onSaved:(message:string)=>void;toggleTask:(id:string)=>void}){const[open,setOpen]=useState(false);const[taskId,setTaskId]=useState('');const[title,setTitle]=useState('');const[date,setDate]=useState(localDateKey());const[startTime,setStartTime]=useState('09:00');const[duration,setDuration]=useState(30);const[category,setCategory]=useState('Study');const[projectId,setProjectId]=useState('');const selected=tasks.find(task=>task.id===taskId);const lastEnd=getLastEndTime(date);const setDurationToNow=()=>{try{const minutes=durationToNow(date,startTime);setDuration(minutes);onSaved(`Duration set to ${minutes} minutes, through now.`)}catch(error){onSaved(error instanceof Error?error.message:'Unable to calculate the duration.')}};const useLastEnd=()=>{if(!lastEnd)return;setStartTime(lastEnd.time);onSaved(`Start time set to ${lastEnd.time}, when “${lastEnd.entry.title}” ended.`)};const save=()=>{const requested=Math.max(1,Math.round(duration));const minutes=selected?capTaskSessionMinutes(selected,requested):requested;if(selected&&minutes===0){onSaved('This task already has its full target time. No extra time was added.');return}if(!selected&&!title.trim()){onSaved('Add a title for this past session.');return}try{const range=backdatedTimeRange(date,startTime,minutes);const entry=selected?createTaskTimeEntry(selected,range.startedAt,range.endedAt,minutes,'Study',`Backfilled session · ${selected.title}`):createManualTimeEntry(title.trim(),category,range.startedAt,range.endedAt,minutes,'Added later without device access',undefined,projectId||undefined);saveTrackedTimeEntry(entry);const reached=Boolean(selected&&taskTargetReached(selected,minutes));if(selected&&selected.status!=='done'&&reached)toggleTask(selected.id);onSaved(`Added ${minutes} minutes for ${date}${selected&&minutes<requested?` · capped from ${requested} minutes to the task target`:''}.`);setOpen(false)}catch(error){onSaved(error instanceof Error?error.message:'Unable to add this session.')}};return <section className="time-panel past-session-panel"><div className="time-panel-head"><div><span className="pill teal">NO DEVICE?</span><h3>Add time later</h3><p className="muted">Backfill work from a time when you could not access the app.</p></div><button className="secondary" onClick={()=>setOpen(value=>!value)}><Icon name={open?'ChevronUp':'Plus'} size={14}/>{open?'Close':'Add past session'}</button></div>{open&&<div className="past-session-form"><label>Task<select value={taskId} onChange={event=>setTaskId(event.target.value)}><option value="">Manual session / no task</option>{tasks.map(task=><option key={task.id} value={task.id}>{task.title} · {remainingTaskMinutes(task)}m remaining</option>)}</select></label>{!selected&&<><label>Title<input value={title} onChange={event=>setTitle(event.target.value)} placeholder="What did you work on?"/></label><label>Category<select value={category} onChange={event=>setCategory(event.target.value)}>{TIME_CATEGORIES.map(item=><option key={item}>{item}</option>)}</select></label><label>Project<select value={projectId} onChange={event=>setProjectId(event.target.value)}><option value="">No project</option>{projects.map(project=><option key={project.id} value={project.id}>{project.name}</option>)}</select></label></>}<label>Date<input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label><label className="past-session-start-time">Started at<input type="time" value={startTime} onChange={event=>setStartTime(event.target.value)}/><button type="button" className="past-session-last-end" onClick={useLastEnd} disabled={!lastEnd}>{lastEnd?`Use last end · ${lastEnd.time}`:'No earlier entry that day'}</button></label><label className="past-session-duration">Duration (minutes)<input type="number" min="1" value={duration} onChange={event=>setDuration(Math.max(1,Number(event.target.value)))}/><button type="button" className="past-session-to-now" onClick={setDurationToNow}>To now</button></label><div className="past-session-preview"><Icon name="Clock3" size={15}/><span>{selected?selected.title:title||'Past session'}<small>{date} · {startTime} · {duration} requested minutes{selected?` · max ${remainingTaskMinutes(selected)}m remaining`:''}</small></span></div><button className="primary" onClick={save}>Add time entry</button></div>}</section>}
+function PastSessionForm({
+  tasks,
+  projects,
+  onSaved,
+  toggleTask,
+}: {
+  tasks: Task[];
+  projects: Project[];
+  onSaved: (message: string) => void;
+  toggleTask: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [taskId, setTaskId] = useState("");
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(localDateKey());
+  const [startTime, setStartTime] = useState("09:00");
+  const [duration, setDuration] = useState(30);
+  const [category, setCategory] = useState("Study");
+  const [subtype, setSubtype] = useState<Subtype>("Gaming");
+  const [projectId, setProjectId] = useState("");
+  const selected = tasks.find((task) => task.id === taskId);
+  const lastEnd = getLastEndTime(date);
+  const setDurationToNow = () => {
+    try {
+      const minutes = durationToNow(date, startTime);
+      setDuration(minutes);
+      onSaved(`Duration set to ${minutes} minutes, through now.`);
+    } catch (error) {
+      onSaved(
+        error instanceof Error
+          ? error.message
+          : "Unable to calculate the duration.",
+      );
+    }
+  };
+  const useLastEnd = () => {
+    if (!lastEnd) return;
+    setStartTime(lastEnd.time);
+    onSaved(
+      `Start time set to ${lastEnd.time}, when “${lastEnd.entry.title}” ended.`,
+    );
+  };
+  const save = () => {
+    const requested = Math.max(1, Math.round(duration));
+    const minutes = selected
+      ? capTaskSessionMinutes(selected, requested)
+      : requested;
+    if (selected && minutes === 0) {
+      onSaved(
+        "This task already has its full target time. No extra time was added.",
+      );
+      return;
+    }
+    if (!selected && !title.trim()) {
+      onSaved("Add a title for this past session.");
+      return;
+    }
+    try {
+      const range = backdatedTimeRange(date, startTime, minutes);
+      const entry = selected
+        ? createTaskTimeEntry(
+            selected,
+            range.startedAt,
+            range.endedAt,
+            minutes,
+            "Study",
+            `Backfilled session · ${selected.title}`,
+          )
+        : createManualTimeEntry(
+            title.trim(),
+            category,
+            range.startedAt,
+            range.endedAt,
+            minutes,
+            "Added later without device access",
+            category === "Entertainment" ? subtype : undefined,
+            projectId || undefined,
+          );
+      saveTrackedTimeEntry(entry);
+      const reached = Boolean(selected && taskTargetReached(selected, minutes));
+      if (selected && selected.status !== "done" && reached)
+        toggleTask(selected.id);
+      onSaved(
+        `Added ${minutes} minutes for ${date}${selected && minutes < requested ? ` · capped from ${requested} minutes to the task target` : ""}.`,
+      );
+      setOpen(false);
+    } catch (error) {
+      onSaved(
+        error instanceof Error ? error.message : "Unable to add this session.",
+      );
+    }
+  };
+  return (
+    <section className="time-panel past-session-panel">
+      <div className="time-panel-head">
+        <div>
+          <span className="pill teal">NO DEVICE?</span>
+          <h3>Add time later</h3>
+          <p className="muted">
+            Backfill work from a time when you could not access the app.
+          </p>
+        </div>
+        <button
+          className="secondary"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Icon name={open ? "ChevronUp" : "Plus"} size={14} />
+          {open ? "Close" : "Add past session"}
+        </button>
+      </div>
+      {open && (
+        <div className="past-session-form">
+          <label>
+            Task
+            <select
+              value={taskId}
+              onChange={(event) => setTaskId(event.target.value)}
+            >
+              <option value="">Manual session / no task</option>
+              {tasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.title} · {remainingTaskMinutes(task)}m remaining
+                </option>
+              ))}
+            </select>
+          </label>
+          {!selected && (
+            <>
+              <label>
+                Title
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="What did you work on?"
+                />
+              </label>
+              <label>
+                Category
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                >
+                  {TIME_CATEGORIES.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              {category === "Entertainment" && (
+                <label>
+                  Entertainment type
+                  <select
+                    value={subtype}
+                    onChange={(event) =>
+                      setSubtype(event.target.value as Subtype)
+                    }
+                  >
+                    {["Gaming", "Novel", "Video", "Movie", "Social Media", "Other"].map(
+                      (item) => <option key={item}>{item}</option>,
+                    )}
+                  </select>
+                </label>
+              )}
+              <label>
+                Project
+                <select
+                  value={projectId}
+                  onChange={(event) => setProjectId(event.target.value)}
+                >
+                  <option value="">No project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </label>
+          <label className="past-session-start-time">
+            Started at
+            <input
+              type="time"
+              value={startTime}
+              onChange={(event) => setStartTime(event.target.value)}
+            />
+            <button
+              type="button"
+              className="past-session-last-end"
+              onClick={useLastEnd}
+              disabled={!lastEnd}
+            >
+              {lastEnd
+                ? `Use last end · ${lastEnd.time}`
+                : "No earlier entry that day"}
+            </button>
+          </label>
+          <label className="past-session-duration">
+            Duration (minutes)
+            <input
+              type="number"
+              min="1"
+              value={duration}
+              onChange={(event) =>
+                setDuration(Math.max(1, Number(event.target.value)))
+              }
+            />
+            <button
+              type="button"
+              className="past-session-to-now"
+              onClick={setDurationToNow}
+            >
+              To now
+            </button>
+          </label>
+          <div className="past-session-preview">
+            <Icon name="Clock3" size={15} />
+            <span>
+              {selected ? selected.title : title || "Past session"}
+              <small>
+                {date} · {startTime} · {duration} requested minutes
+                {selected
+                  ? ` · max ${remainingTaskMinutes(selected)}m remaining`
+                  : ""}
+              </small>
+            </span>
+          </div>
+          <button className="primary" onClick={save}>
+            Add time entry
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
 
-export default function TimeTrackingPage({tasks,projects}:{tasks:Task[];projects:Project[]}){
- const {toggleTask}=useAppStore();const savingRef=useRef(false);
- const today=localDateKey();const[active,setActive]=useState<Active|null>(read);const[title,setTitle]=useState(()=>{try{const raw=localStorage.getItem('personal-life-os-time-prefill-v1');if(!raw)return '';const value=JSON.parse(raw) as {title?:string};return value.title||''}catch{return ''}});const[notes,setNotes]=useState(()=>{try{const raw=localStorage.getItem('personal-life-os-time-prefill-v1');if(!raw)return '';const value=JSON.parse(raw) as {notes?:string};return value.notes||''}catch{return ''}});const[prefillTaskId,setPrefillTaskId]=useState(()=>{try{const raw=localStorage.getItem('personal-life-os-time-prefill-v1');const value=raw?JSON.parse(raw) as {taskId?:string}:{};localStorage.removeItem('personal-life-os-time-prefill-v1');return value.taskId||''}catch{return ''}});const[category,setCategory]=useState('Study');const[subtype,setSubtype]=useState<Subtype>('Gaming');const[projectId,setProjectId]=useState('');const[message,setMessage]=useState('');const[tick,setTick]=useState(0);const[selectedDate,setSelectedDate]=useState(today);const[historyOpen,setHistoryOpen]=useState(false);
- const allowance=getGamingAllowance(today);const allowOverage=getRewardState().config.allowOverage;const remaining=Math.max(0,allowance.baseMinutes+allowance.activatedVoucherMinutes+allowance.bonusMinutes-allowance.usedMinutes);const totals=useMemo(()=>getCategoryTotals(today),[today,tick]);const week=useMemo(()=>getWeeklyTotals(),[tick]);
- useEffect(()=>{if(!active?.running)return;const id=window.setInterval(()=>setTick(v=>v+1),1000);return()=>window.clearInterval(id)},[active?.running]);
- useEffect(()=>{if(active)localStorage.setItem(KEY,JSON.stringify(active));else localStorage.removeItem(KEY)},[active]);
- const elapsed=active?(active.running?active.elapsed+Math.floor((Date.now()-new Date(active.startedAt).getTime())/1000):active.elapsed):0;const targetSeconds=active?.task?Math.max(1,remainingTaskMinutes(active.task)*60):3600;const timerProgress=active?Math.min(100,elapsed/targetSeconds*100):0;
- const start=(task?:Task)=>{const taskCategory=task?inferTaskTimeCategory(task):category;const gaming=!task&&category==='Entertainment'&&subtype==='Gaming';if(gaming&&!allowOverage&&remaining<=0){setMessage('Gaming allowance is used for today. Enable overage in Settings or activate a voucher.');return}setActive({title:task?.title||title.trim(),category:taskCategory,entertainmentSubtype:task?task.entertainmentSubtype:category==='Entertainment'?subtype:undefined,task,startedAt:new Date().toISOString(),elapsed:0,running:true})};
-const stop=()=>{if(!active||savingRef.current)return;savingRef.current=true;const end=new Date().toISOString();const rawMinutes=Math.max(1,Math.round(elapsed/60));const minutes=active.task?capTaskSessionMinutes(active.task,rawMinutes):rawMinutes;if(minutes>0)saveTrackedTimeEntry(active.task?createTaskTimeEntry(active.task,new Date(new Date(end).getTime()-Math.min(elapsed,minutes*60)*1000).toISOString(),end,minutes,'Study',`${active.title} session`):createManualTimeEntry(active.title,active.category,new Date(new Date(end).getTime()-elapsed*1000).toISOString(),end,minutes,notes,active.entertainmentSubtype,projectId||undefined));const trackedAfter=active.task?(active.task.trackedMinutes||0)+minutes:minutes;const reachedTarget=Boolean(active.task&&taskTargetReached(active.task,minutes));if(active.task&&active.task.status!=='done'&&reachedTarget)toggleTask(active.task.id);setActive(null);setMessage(active.task?(reachedTarget?`Saved ${minutes} minutes. Target reached and task completed.`:`Saved ${minutes} minutes. ${Math.max(0,active.task.minutes-trackedAfter)} minutes remaining.`):`Saved ${minutes} minutes to ${active.category}.`);setNotes('');setTick(v=>v+1);window.setTimeout(()=>{savingRef.current=false},300)};
- useEffect(()=>{if(active?.task&&active.running&&elapsed>=targetSeconds)stop()},[tick]);
- const remove=(entry:TimeEntry)=>{if(!window.confirm(`Delete “${entry.title}” from time history?`))return;if(deleteTimeEntry(entry.id)){setMessage('Time entry deleted and linked totals were restored.');setTick(v=>v+1)}};
- const reuse=(entry:TimeEntry)=>{setTitle(entry.title);setNotes(entry.notes||'');setCategory(entry.category);setSubtype(entry.entertainmentSubtype||'Gaming');setProjectId(entry.projectId||'');setMessage('Session details loaded. Press Start timer to begin.');window.scrollTo({top:0,behavior:'smooth'})};
- const total=Object.values(totals).reduce((a,b)=>a+b,0);const max=Math.max(1,...Object.values(totals));const todayEntries=getTimeEntries(today);const projectTotals=todayEntries.reduce<Record<string,number>>((out,entry)=>{const name=projects.find(project=>project.id===entry.projectId)?.name||'No project';out[name]=(out[name]||0)+entry.durationMinutes;return out},{});const weeklyProjectTotals=week.flatMap(day=>getTimeEntries(day.date)).reduce<Record<string,number>>((out,entry)=>{const name=projects.find(project=>project.id===entry.projectId)?.name||'No project';out[name]=(out[name]||0)+entry.durationMinutes;return out},{});const recentEntries=week.flatMap(day=>getTimeEntries(day.date).map(entry=>({...entry,date:day.date})));const selectedEntries=getTimeEntries(selectedDate);const selectedGroups=groupDayEntries(selectedEntries);
- return <div className="content time-page"><div className="time-header"><div><span className="pill teal">TIME TRACKING</span><small className="time-allowance">Gaming remaining: {remaining} min</small><h2>Make time visible.</h2><p className="muted">Task sessions are linked automatically. Start anything else manually.</p></div></div>
-{active?<section className="time-active"><div><small>NOW TRACKING · {active.category}</small><h3>{active.title}</h3><b>{fmt(elapsed)}</b><div className="timer-progress"><i style={{width:`${timerProgress}%`}}/></div><small>{active.task?`${Math.round(timerProgress)}% of ${active.task.minutes} min goal`:'Manual session · 60 min visual target'}</small></div><div className="time-actions">{active.running?<button className="secondary" onClick={()=>setActive({...active,elapsed,running:false,startedAt:new Date().toISOString()})}><Icon name="Pause" size={15}/> Pause</button>:<button className="primary" onClick={()=>setActive({...active,running:true,startedAt:new Date().toISOString()})}><Icon name="Play" size={15}/> Resume</button>}<button className="primary" onClick={stop}><Icon name="Square" size={15}/> Stop & save</button></div></section>:<section className="time-manual"><div><h3>Start a manual session</h3><p className="muted">Use this when you are not starting from a task.</p></div><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="What are you doing?"/><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="What did you do? (optional)" rows={2}/><select value={category} onChange={e=>setCategory(e.target.value)}>{TIME_CATEGORIES.map(item=><option key={item}>{item}</option>)}</select>{category==='Entertainment'&&<select value={subtype} onChange={e=>setSubtype(e.target.value as Subtype)}>{['Gaming','Novel','Video','Movie','Social Media','Other'].map(item=><option key={item}>{item}</option>)}</select>}{projects.length>0&&<select value={projectId} onChange={e=>setProjectId(e.target.value)}><option value="">No project</option>{projects.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>}<button className="primary" disabled={!title.trim()} onClick={()=>start()}><Icon name="Play" size={15}/> Start timer</button></section>}
- {message&&<p className="time-message">{message}</p>}<PastSessionForm tasks={tasks} projects={projects} toggleTask={toggleTask} onSaved={value=>{setMessage(value);setTick(current=>current+1)}}/><section className="time-panel"><div className="time-panel-head"><div><span className="pill purple">TODAY</span><h3>Where did your time go?</h3></div><b>{total} min</b></div><TimeCategoryChart totals={totals}/><div className="time-breakdown">{Object.entries(totals).map(([name,value])=><div key={name}><div className="time-breakdown-label"><span><i className="time-category-dot" style={{background:categoryColor(name)}}/>{name}</span><b style={{color:categoryColor(name)}}>{value}m</b></div><i><em style={{width:`${value/max*100}%`,background:categoryColor(name)}}/></i></div>)}{!total&&<p className="muted">No saved time today yet.</p>}</div></section>
-<section className="time-panel"><div className="time-panel-head"><div><span className="pill teal">LAST 7 DAYS</span><h3>Weekly time</h3></div></div><div className="time-bars">{week.map(item=><div key={item.date} title={`${item.date} · ${item.minutes} min`} onClick={()=>setSelectedDate(item.date)} role="button" tabIndex={0} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();setSelectedDate(item.date)}}}><b style={{height:`${Math.min(100,item.minutes/Math.max(1,...week.map(x=>x.minutes))*100)}%`}}/><small>{item.date.slice(5)}</small><em>{item.minutes}m</em></div>)}</div></section><section className="time-panel"><div className="time-panel-head"><div><span className="pill teal">DAY DETAIL</span><h3>{selectedDate}</h3></div><b>{selectedEntries.reduce((sum,entry)=>sum+entry.durationMinutes,0)} min</b></div><div className="time-entry-list">{selectedGroups.map(group=><div key={[group.taskId||group.title,group.category,group.projectId||'',group.source].join('|')}><Icon name={group.source==='task'?'CheckCircle2':'Clock3'} size={15}/><span><b>{group.title}</b><small>{group.category}{group.projectId&&` · ${projects.find(project=>project.id===group.projectId)?.name||'Project'}`} · {group.durationMinutes} min{group.sessionCount>1&&<em className="time-entry-group-count"> · {group.sessionCount} sessions</em>}</small>{group.notes&&<em className="time-entry-notes">{group.notes}</em>}</span></div>)}{!selectedEntries.length&&<p className="muted">No saved entries for this day.</p>}</div></section><section className="time-panel"><div className="time-panel-head"><div><span className="pill purple">PROJECTS</span><h3>Today by project</h3></div></div><div className="time-breakdown">{Object.entries(projectTotals).map(([name,value])=><div key={name}><div className="time-breakdown-label"><span>{name}</span><b>{value}m</b></div><i><em style={{width:`${value/Math.max(1,...Object.values(projectTotals))*100}%`}}/></i></div>)}{!Object.keys(projectTotals).length&&<p className="muted">Project totals will appear after you save a session.</p>}</div></section><section className="time-panel"><div className="time-panel-head"><div><span className="pill teal">PROJECTS</span><h3>Last 7 days by project</h3></div></div><div className="time-breakdown">{Object.entries(weeklyProjectTotals).map(([name,value])=><div key={name}><div className="time-breakdown-label"><span>{name}</span><b>{value}m</b></div><i><em style={{width:`${value/Math.max(1,...Object.values(weeklyProjectTotals))*100}%`}}/></i></div>)}{!Object.keys(weeklyProjectTotals).length&&<p className="muted">Weekly project totals will appear after you save sessions.</p>}</div></section>
-<section className="time-panel"><div className="time-panel-head"><h3>Today’s entries</h3></div><div className="time-entry-list">{getTimeEntries(today).map(entry=><div key={entry.id}><Icon name={entry.source==='task'?'CheckCircle2':'Clock3'} size={15}/><span><b>{entry.title}</b><small>{entry.category}{entry.projectId&&` · ${projects.find(project=>project.id===entry.projectId)?.name||'Project'}`} · {entry.durationMinutes} min · {entry.source==='task'?'from task':'manual'}</small>{entry.notes&&<em className="time-entry-notes">{entry.notes}</em>}</span><button className="time-entry-delete" onClick={()=>remove(entry)} aria-label={`Delete ${entry.title}`}>Delete</button></div>)}{!getTimeEntries(today).length&&<p className="muted">Saved sessions will appear here.</p>}</div></section>
-<section className="time-panel"><div className="time-panel-head"><div><span className="pill purple">HISTORY</span><h3>Recent entries</h3><p className="muted">Showing {historyOpen?recentEntries.length:Math.min(5,recentEntries.length)} of {recentEntries.length}</p></div><button className="secondary" onClick={()=>setHistoryOpen(value=>!value)} disabled={recentEntries.length<=5}><Icon name={historyOpen?'ChevronUp':'ChevronDown'} size={14}/>{historyOpen?'Collapse':'Show all'}</button></div><div className="time-entry-list">{recentEntries.slice(0,historyOpen?recentEntries.length:5).map(entry=><div key={entry.id}><Icon name={entry.source==='task'?'CheckCircle2':'Clock3'} size={15}/><span><b>{entry.title}</b><small>{entry.date} · {entry.category}{entry.projectId&&` · ${projects.find(project=>project.id===entry.projectId)?.name||'Project'}`} · {entry.durationMinutes} min</small>{entry.notes&&<em className="time-entry-notes">{entry.notes}</em>}</span><button className="time-entry-delete" onClick={()=>remove(entry)} aria-label={`Delete ${entry.title}`}>Delete</button><button className="time-entry-reuse" onClick={()=>reuse(entry)} aria-label={`Reuse ${entry.title}`}>Reuse</button></div>)}{!recentEntries.length&&<p className="muted">Recent saved sessions will appear here.</p>}</div></section><TaskTimeCheck tasks={tasks} projects={projects} onStart={start}/></div>;
+export default function TimeTrackingPage({
+  tasks,
+  projects,
+}: {
+  tasks: Task[];
+  projects: Project[];
+}) {
+  const { toggleTask } = useAppStore();
+  const savingRef = useRef(false);
+  const today = localDateKey();
+  const [active, setActive] = useState<Active | null>(read);
+  const [title, setTitle] = useState(() => {
+    try {
+      const raw = localStorage.getItem("personal-life-os-time-prefill-v1");
+      if (!raw) return "";
+      const value = JSON.parse(raw) as { title?: string };
+      return value.title || "";
+    } catch {
+      return "";
+    }
+  });
+  const [notes, setNotes] = useState(() => {
+    try {
+      const raw = localStorage.getItem("personal-life-os-time-prefill-v1");
+      if (!raw) return "";
+      const value = JSON.parse(raw) as { notes?: string };
+      return value.notes || "";
+    } catch {
+      return "";
+    }
+  });
+  const [prefillTaskId, setPrefillTaskId] = useState(() => {
+    try {
+      const raw = localStorage.getItem("personal-life-os-time-prefill-v1");
+      const value = raw ? (JSON.parse(raw) as { taskId?: string }) : {};
+      localStorage.removeItem("personal-life-os-time-prefill-v1");
+      return value.taskId || "";
+    } catch {
+      return "";
+    }
+  });
+  const [category, setCategory] = useState("Study");
+  const [subtype, setSubtype] = useState<Subtype>("Gaming");
+  const [projectId, setProjectId] = useState("");
+  const [message, setMessage] = useState("");
+  const [tick, setTick] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const allowance = getGamingAllowance(today);
+  const allowOverage = getRewardState().config.allowOverage;
+  const remaining = Math.max(
+    0,
+    allowance.baseMinutes +
+      allowance.activatedVoucherMinutes +
+      allowance.bonusMinutes -
+      allowance.usedMinutes,
+  );
+  const totals = useMemo(() => getCategoryTotals(today), [today, tick]);
+  const week = useMemo(() => getWeeklyTotals(), [tick]);
+  useEffect(() => {
+    if (!active?.running) return;
+    const id = window.setInterval(() => setTick((v) => v + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [active?.running]);
+  useEffect(() => {
+    if (active) localStorage.setItem(KEY, JSON.stringify(active));
+    else localStorage.removeItem(KEY);
+  }, [active]);
+  const elapsed = active
+    ? active.running
+      ? active.elapsed +
+        Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 1000)
+      : active.elapsed
+    : 0;
+  const targetSeconds = active?.task
+    ? Math.max(1, remainingTaskMinutes(active.task) * 60)
+    : 3600;
+  const timerProgress = active
+    ? Math.min(100, (elapsed / targetSeconds) * 100)
+    : 0;
+  const start = (task?: Task) => {
+    const taskCategory = task ? inferTaskTimeCategory(task) : category;
+    const gaming =
+      !task && category === "Entertainment" && subtype === "Gaming";
+    if (gaming && !allowOverage && remaining <= 0) {
+      setMessage(
+        "Gaming allowance is used for today. Enable overage in Settings or activate a voucher.",
+      );
+      return;
+    }
+    setActive({
+      title: task?.title || title.trim(),
+      category: taskCategory,
+      entertainmentSubtype: task
+        ? task.entertainmentSubtype
+        : category === "Entertainment"
+          ? subtype
+          : undefined,
+      task,
+      startedAt: new Date().toISOString(),
+      elapsed: 0,
+      running: true,
+    });
+  };
+  const stop = () => {
+    if (!active || savingRef.current) return;
+    savingRef.current = true;
+    const end = new Date().toISOString();
+    const rawMinutes = Math.max(1, Math.round(elapsed / 60));
+    const minutes = active.task
+      ? capTaskSessionMinutes(active.task, rawMinutes)
+      : rawMinutes;
+    if (minutes > 0)
+      saveTrackedTimeEntry(
+        active.task
+          ? createTaskTimeEntry(
+              active.task,
+              new Date(
+                new Date(end).getTime() -
+                  Math.min(elapsed, minutes * 60) * 1000,
+              ).toISOString(),
+              end,
+              minutes,
+              "Study",
+              `${active.title} session`,
+            )
+          : createManualTimeEntry(
+              active.title,
+              active.category,
+              new Date(new Date(end).getTime() - elapsed * 1000).toISOString(),
+              end,
+              minutes,
+              notes,
+              active.entertainmentSubtype,
+              projectId || undefined,
+            ),
+      );
+    const trackedAfter = active.task
+      ? (active.task.trackedMinutes || 0) + minutes
+      : minutes;
+    const reachedTarget = Boolean(
+      active.task && taskTargetReached(active.task, minutes),
+    );
+    if (active.task && active.task.status !== "done" && reachedTarget)
+      toggleTask(active.task.id);
+    setActive(null);
+    setMessage(
+      active.task
+        ? reachedTarget
+          ? `Saved ${minutes} minutes. Target reached and task completed.`
+          : `Saved ${minutes} minutes. ${Math.max(0, active.task.minutes - trackedAfter)} minutes remaining.`
+        : `Saved ${minutes} minutes to ${active.category}.`,
+    );
+    setNotes("");
+    setTick((v) => v + 1);
+    window.setTimeout(() => {
+      savingRef.current = false;
+    }, 300);
+  };
+  useEffect(() => {
+    if (active?.task && active.running && elapsed >= targetSeconds) stop();
+  }, [tick]);
+  const remove = (entry: TimeEntry) => {
+    if (!window.confirm(`Delete “${entry.title}” from time history?`)) return;
+    if (deleteTimeEntry(entry.id)) {
+      setMessage("Time entry deleted and linked totals were restored.");
+      setTick((v) => v + 1);
+    }
+  };
+  const reuse = (entry: TimeEntry) => {
+    setTitle(entry.title);
+    setNotes(entry.notes || "");
+    setCategory(entry.category);
+    setSubtype(entry.entertainmentSubtype || "Gaming");
+    setProjectId(entry.projectId || "");
+    setMessage("Session details loaded. Press Start timer to begin.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const total = Object.values(totals).reduce((a, b) => a + b, 0);
+  const max = Math.max(1, ...Object.values(totals));
+  const todayEntries = getTimeEntries(today);
+  const projectTotals = todayEntries.reduce<Record<string, number>>(
+    (out, entry) => {
+      const name =
+        projects.find((project) => project.id === entry.projectId)?.name ||
+        "No project";
+      out[name] = (out[name] || 0) + entry.durationMinutes;
+      return out;
+    },
+    {},
+  );
+  const weeklyProjectTotals = week
+    .flatMap((day) => getTimeEntries(day.date))
+    .reduce<Record<string, number>>((out, entry) => {
+      const name =
+        projects.find((project) => project.id === entry.projectId)?.name ||
+        "No project";
+      out[name] = (out[name] || 0) + entry.durationMinutes;
+      return out;
+    }, {});
+  const recentEntries = week.flatMap((day) =>
+    getTimeEntries(day.date).map((entry) => ({ ...entry, date: day.date })),
+  );
+  const selectedEntries = getTimeEntries(selectedDate);
+  const selectedGroups = groupDayEntries(selectedEntries);
+  return (
+    <div className="content time-page">
+      <div className="time-header">
+        <div>
+          <span className="pill teal">TIME TRACKING</span>
+          <small className="time-allowance">
+            Gaming remaining: {remaining} min
+          </small>
+          <h2>Make time visible.</h2>
+          <p className="muted">
+            Task sessions are linked automatically. Start anything else
+            manually.
+          </p>
+        </div>
+      </div>
+      {active ? (
+        <section className="time-active">
+          <div>
+            <small>NOW TRACKING · {active.category}</small>
+            <h3>{active.title}</h3>
+            <b>{fmt(elapsed)}</b>
+            <div className="timer-progress">
+              <i style={{ width: `${timerProgress}%` }} />
+            </div>
+            <small>
+              {active.task
+                ? `${Math.round(timerProgress)}% of ${active.task.minutes} min goal`
+                : "Manual session · 60 min visual target"}
+            </small>
+          </div>
+          <div className="time-actions">
+            {active.running ? (
+              <button
+                className="secondary"
+                onClick={() =>
+                  setActive({
+                    ...active,
+                    elapsed,
+                    running: false,
+                    startedAt: new Date().toISOString(),
+                  })
+                }
+              >
+                <Icon name="Pause" size={15} /> Pause
+              </button>
+            ) : (
+              <button
+                className="primary"
+                onClick={() =>
+                  setActive({
+                    ...active,
+                    running: true,
+                    startedAt: new Date().toISOString(),
+                  })
+                }
+              >
+                <Icon name="Play" size={15} /> Resume
+              </button>
+            )}
+            <button className="primary" onClick={stop}>
+              <Icon name="Square" size={15} /> Stop & save
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="time-manual">
+          <div>
+            <h3>Start a manual session</h3>
+            <p className="muted">
+              Use this when you are not starting from a task.
+            </p>
+          </div>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What are you doing?"
+          />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What did you do? (optional)"
+            rows={2}
+          />
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {TIME_CATEGORIES.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+          {category === "Entertainment" && (
+            <select
+              value={subtype}
+              onChange={(e) => setSubtype(e.target.value as Subtype)}
+            >
+              {[
+                "Gaming",
+                "Novel",
+                "Video",
+                "Movie",
+                "Social Media",
+                "Other",
+              ].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          )}
+          {projects.length > 0 && (
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            >
+              <option value="">No project</option>
+              {projects.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            className="primary"
+            disabled={!title.trim()}
+            onClick={() => start()}
+          >
+            <Icon name="Play" size={15} /> Start timer
+          </button>
+        </section>
+      )}
+      {message && <p className="time-message">{message}</p>}
+      <PastSessionForm
+        tasks={tasks}
+        projects={projects}
+        toggleTask={toggleTask}
+        onSaved={(value) => {
+          setMessage(value);
+          setTick((current) => current + 1);
+        }}
+      />
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill purple">TODAY</span>
+            <h3>Where did your time go?</h3>
+          </div>
+          <b>{total} min</b>
+        </div>
+        <TimeCategoryChart totals={totals} />
+        <div className="time-breakdown">
+          {Object.entries(totals).map(([name, value]) => (
+            <div key={name}>
+              <div className="time-breakdown-label">
+                <span>
+                  <i
+                    className="time-category-dot"
+                    style={{ background: categoryColor(name) }}
+                  />
+                  {name}
+                </span>
+                <b style={{ color: categoryColor(name) }}>{value}m</b>
+              </div>
+              <i>
+                <em
+                  style={{
+                    width: `${(value / max) * 100}%`,
+                    background: categoryColor(name),
+                  }}
+                />
+              </i>
+            </div>
+          ))}
+          {!total && <p className="muted">No saved time today yet.</p>}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill teal">LAST 7 DAYS</span>
+            <h3>Weekly time</h3>
+          </div>
+        </div>
+        <div className="time-bars">
+          {week.map((item) => (
+            <div
+              key={item.date}
+              title={`${item.date} · ${item.minutes} min`}
+              onClick={() => setSelectedDate(item.date)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedDate(item.date);
+                }
+              }}
+            >
+              <b
+                style={{
+                  height: `${Math.min(100, (item.minutes / Math.max(1, ...week.map((x) => x.minutes))) * 100)}%`,
+                }}
+              />
+              <small>{item.date.slice(5)}</small>
+              <em>{item.minutes}m</em>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill teal">DAY DETAIL</span>
+            <h3>{selectedDate}</h3>
+          </div>
+          <b>
+            {selectedEntries.reduce(
+              (sum, entry) => sum + entry.durationMinutes,
+              0,
+            )}{" "}
+            min
+          </b>
+        </div>
+        <div className="time-entry-list">
+          {selectedGroups.map((group) => (
+            <div
+              key={[
+                group.taskId || group.title,
+                group.category,
+                group.projectId || "",
+                group.source,
+              ].join("|")}
+            >
+              <Icon
+                name={group.source === "task" ? "CheckCircle2" : "Clock3"}
+                size={15}
+              />
+              <span>
+                <b>{group.title}</b>
+                <small>
+                  {group.category}
+                  {group.projectId &&
+                    ` · ${projects.find((project) => project.id === group.projectId)?.name || "Project"}`}{" "}
+                  · {group.durationMinutes} min
+                  {group.sessionCount > 1 && (
+                    <em className="time-entry-group-count">
+                      {" "}
+                      · {group.sessionCount} sessions
+                    </em>
+                  )}
+                </small>
+                {group.notes && (
+                  <em className="time-entry-notes">{group.notes}</em>
+                )}
+              </span>
+            </div>
+          ))}
+          {!selectedEntries.length && (
+            <p className="muted">No saved entries for this day.</p>
+          )}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill purple">PROJECTS</span>
+            <h3>Today by project</h3>
+          </div>
+        </div>
+        <div className="time-breakdown">
+          {Object.entries(projectTotals).map(([name, value]) => (
+            <div key={name}>
+              <div className="time-breakdown-label">
+                <span>{name}</span>
+                <b>{value}m</b>
+              </div>
+              <i>
+                <em
+                  style={{
+                    width: `${(value / Math.max(1, ...Object.values(projectTotals))) * 100}%`,
+                  }}
+                />
+              </i>
+            </div>
+          ))}
+          {!Object.keys(projectTotals).length && (
+            <p className="muted">
+              Project totals will appear after you save a session.
+            </p>
+          )}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill teal">PROJECTS</span>
+            <h3>Last 7 days by project</h3>
+          </div>
+        </div>
+        <div className="time-breakdown">
+          {Object.entries(weeklyProjectTotals).map(([name, value]) => (
+            <div key={name}>
+              <div className="time-breakdown-label">
+                <span>{name}</span>
+                <b>{value}m</b>
+              </div>
+              <i>
+                <em
+                  style={{
+                    width: `${(value / Math.max(1, ...Object.values(weeklyProjectTotals))) * 100}%`,
+                  }}
+                />
+              </i>
+            </div>
+          ))}
+          {!Object.keys(weeklyProjectTotals).length && (
+            <p className="muted">
+              Weekly project totals will appear after you save sessions.
+            </p>
+          )}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <h3>Today’s entries</h3>
+        </div>
+        <div className="time-entry-list">
+          {getTimeEntries(today).map((entry) => (
+            <div key={entry.id}>
+              <Icon
+                name={entry.source === "task" ? "CheckCircle2" : "Clock3"}
+                size={15}
+              />
+              <span>
+                <b>{entry.title}</b>
+                <small>
+                  {entry.category}
+                  {entry.projectId &&
+                    ` · ${projects.find((project) => project.id === entry.projectId)?.name || "Project"}`}{" "}
+                  · {entry.durationMinutes} min ·{" "}
+                  {entry.source === "task" ? "from task" : "manual"}
+                </small>
+                {entry.notes && (
+                  <em className="time-entry-notes">{entry.notes}</em>
+                )}
+              </span>
+              <button
+                className="time-entry-delete"
+                onClick={() => remove(entry)}
+                aria-label={`Delete ${entry.title}`}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+          {!getTimeEntries(today).length && (
+            <p className="muted">Saved sessions will appear here.</p>
+          )}
+        </div>
+      </section>
+      <section className="time-panel">
+        <div className="time-panel-head">
+          <div>
+            <span className="pill purple">HISTORY</span>
+            <h3>Recent entries</h3>
+            <p className="muted">
+              Showing{" "}
+              {historyOpen
+                ? recentEntries.length
+                : Math.min(5, recentEntries.length)}{" "}
+              of {recentEntries.length}
+            </p>
+          </div>
+          <button
+            className="secondary"
+            onClick={() => setHistoryOpen((value) => !value)}
+            disabled={recentEntries.length <= 5}
+          >
+            <Icon name={historyOpen ? "ChevronUp" : "ChevronDown"} size={14} />
+            {historyOpen ? "Collapse" : "Show all"}
+          </button>
+        </div>
+        <div className="time-entry-list">
+          {recentEntries
+            .slice(0, historyOpen ? recentEntries.length : 5)
+            .map((entry) => (
+              <div key={entry.id}>
+                <Icon
+                  name={entry.source === "task" ? "CheckCircle2" : "Clock3"}
+                  size={15}
+                />
+                <span>
+                  <b>{entry.title}</b>
+                  <small>
+                    {entry.date} · {entry.category}
+                    {entry.projectId &&
+                      ` · ${projects.find((project) => project.id === entry.projectId)?.name || "Project"}`}{" "}
+                    · {entry.durationMinutes} min
+                  </small>
+                  {entry.notes && (
+                    <em className="time-entry-notes">{entry.notes}</em>
+                  )}
+                </span>
+                <button
+                  className="time-entry-delete"
+                  onClick={() => remove(entry)}
+                  aria-label={`Delete ${entry.title}`}
+                >
+                  Delete
+                </button>
+                <button
+                  className="time-entry-reuse"
+                  onClick={() => reuse(entry)}
+                  aria-label={`Reuse ${entry.title}`}
+                >
+                  Reuse
+                </button>
+              </div>
+            ))}
+          {!recentEntries.length && (
+            <p className="muted">Recent saved sessions will appear here.</p>
+          )}
+        </div>
+      </section>
+      <TaskTimeCheck tasks={tasks} projects={projects} onStart={start} />
+    </div>
+  );
 }
