@@ -21,7 +21,7 @@ const notify=()=>listeners.forEach(listener=>listener());
 const saveData=(next:AppData)=>{currentData=next;repository={...loadSnapshot(),data:next,updatedAt:now()};saveSnapshot(repository);notify()};
 const activity=(type:ActivityEntity['type'],title:string,source:string,metadata:Record<string,unknown>,durationMinutes?:number):ActivityEntity=>{const timestamp=now();return{id:`activity-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,createdAt:timestamp,updatedAt:timestamp,type,title,occurredAt:timestamp,source,metadata,durationMinutes}};
 const legacyActivity=(item:ActivityEntity):Activity=>({id:item.id,label:item.title,type:item.type,time:'Just now',meta:item.durationMinutes?`${item.durationMinutes} minutes · ${item.source||'Activity'}`:item.source||'Activity'});
-const commitEvent=(next:AppData,event:ActivityEntity)=>{next.activities=[legacyActivity(event),...next.activities].slice(0,500);const latest=loadSnapshot();repository={...latest,activities:[event,...latest.activities].slice(0,500),data:next,updatedAt:now()};currentData=next;saveSnapshot(repository);notify()};
+const commitEvent=(next:AppData,event:ActivityEntity)=>{next.activities=[legacyActivity(event),...next.activities].slice(0,500);const latest=loadSnapshot();repository={...latest,habitLogs:repository.habitLogs,taskCompletions:repository.taskCompletions,activities:[event,...latest.activities].slice(0,500),data:next,updatedAt:now()};currentData=next;saveSnapshot(repository);notify()};
 
 export function setAppData(updater:Updater){saveData(typeof updater==='function'?updater(currentData):updater)}
 export function getAppData(){return currentData}
