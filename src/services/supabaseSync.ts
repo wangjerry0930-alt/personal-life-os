@@ -8,6 +8,7 @@ export const SUPABASE_CONFIG_EVENT='life-os-supabase-config-changed';
 export const SUPABASE_STATUS_EVENT='life-os-supabase-sync-status';
 
 export type CloudSnapshotRow={payload:RepositorySnapshot;updated_at:string};
+export function isSupabaseQuotaError(error:unknown){return error instanceof Error&&error.message.includes('Supabase 402')}
 
 function config(){
   const url=localStorage.getItem(SUPABASE_URL_KEY)?.trim().replace(/\/$/,'')||'';

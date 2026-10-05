@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getAppSnapshot, restoreAppSnapshot, useAppStore } from '../store/useAppStore';
-import { chooseSyncDirection, getLastSync, hasSupabaseConfig, isAutoSyncEnabled, pullCloudSnapshot, pushCloudSnapshot, recordLastSync, reportSyncStatus, SUPABASE_CONFIG_EVENT } from '../services/supabaseSync';
+import { chooseSyncDirection, getLastSync, hasSupabaseConfig, isAutoSyncEnabled, isSupabaseQuotaError, pullCloudSnapshot, pushCloudSnapshot, recordLastSync, reportSyncStatus, SUPABASE_AUTO_SYNC_KEY, SUPABASE_CONFIG_EVENT } from '../services/supabaseSync';
 
 const PUSH_DELAY=2500;
 const PULL_INTERVAL=15*60*1000;
@@ -36,6 +36,7 @@ export default function AutoCloudSync(){
         ready.current=true;
       }catch(error){
         lastReconcileAt.current=0;
+        if(isSupabaseQuotaError(error)){localStorage.setItem(SUPABASE_AUTO_SYNC_KEY,'false');ready.current=false;reportSyncStatus('paused','Supabase quota exceeded (402) · automatic sync paused');return}
         reportSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?(error instanceof Error?error.message:'Automatic sync failed'):'Offline · changes stay safely on this device');
         window.clearTimeout(retry.current);retry.current=window.setTimeout(()=>void reconcile(),15000);
       }finally{busy.current=false}
@@ -54,7 +55,7 @@ export default function AutoCloudSync(){
       if(busy.current||!navigator.onLine)return;
       busy.current=true;reportSyncStatus('syncing','Backing up recent changes…');
       try{const rows=await pushCloudSnapshot(getAppSnapshot());const at=rows[0]?.updated_at||new Date().toISOString();recordLastSync(at);reportSyncStatus('synced','Changes backed up automatically',at)}
-      catch(error){reportSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?(error instanceof Error?error.message:'Automatic backup failed'):'Offline · backup will retry later')}
+      catch(error){if(isSupabaseQuotaError(error)){localStorage.setItem(SUPABASE_AUTO_SYNC_KEY,'false');ready.current=false;reportSyncStatus('paused','Supabase quota exceeded (402) · automatic sync paused')}else reportSyncStatus(navigator.onLine?'error':'offline',navigator.onLine?(error instanceof Error?error.message:'Automatic backup failed'):'Offline · backup will retry later')}
       finally{busy.current=false}
     },PUSH_DELAY);
     return()=>window.clearTimeout(timer);
