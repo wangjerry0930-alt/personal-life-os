@@ -1,77 +1,1230 @@
-import { useEffect, useState } from 'react';
-import CourseTaskTemplates from './CourseTaskTemplates';
-import UpcomingCourseTasks from './UpcomingCourseTasks';
-import { useAppStore } from '../store/useAppStore';
-import { localDateKey } from '../domain/date';
-import { addLocalDays } from '../domain/date';
-import { startTaskTimer as beginTaskTimer } from '../services/timeTrackingService';
-import { loadSnapshot, saveSnapshot } from '../repositories/appRepository';
+import { useEffect, useState } from "react";
+import CourseTaskTemplates from "./CourseTaskTemplates";
+import UpcomingCourseTasks from "./UpcomingCourseTasks";
+import { useAppStore } from "../store/useAppStore";
+import { localDateKey } from "../domain/date";
+import { addLocalDays } from "../domain/date";
+import { startTaskTimer as beginTaskTimer } from "../services/timeTrackingService";
+import { loadSnapshot, saveSnapshot } from "../repositories/appRepository";
 
-type CourseFile = { id: string; name: string; size: number; type: string; dataUrl: string; reviewedAt?: string; uploadedAt?: string };
+type CourseFile = {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+  reviewedAt?: string;
+  uploadedAt?: string;
+};
 type StoredFiles = Record<string, CourseFile[]>;
-const courseFromNotes = (notes?: string) => notes?.match(/^Course:\s*(.*?)\s*·/)?.[1]?.trim() || '';
+type FurtherReadingFile = CourseFile & { notes: string };
+type StoredFurtherReading = Record<string, FurtherReadingFile[]>;
+const courseFromNotes = (notes?: string) =>
+  notes?.match(/^Course:\s*(.*?)\s*·/)?.[1]?.trim() || "";
 const MAX_COURSE_FILE_BYTES = 6 * 1024 * 1024;
 
 const readFiles = (): StoredFiles => {
   try {
-    const stored = localStorage.getItem('personal-life-os-course-files-v1');
-    const parsed = stored ? JSON.parse(stored) as Record<string, CourseFile[] | CourseFile> : loadSnapshot().courseFiles as Record<string, CourseFile[] | CourseFile>;
-    return Object.fromEntries(Object.entries(parsed).map(([course, value]) => [course, Array.isArray(value) ? value : [{ ...value, id: `course-file-${Date.now()}-${course}` }]]));
-  } catch { return {}; }
+    const stored = localStorage.getItem("personal-life-os-course-files-v1");
+    const parsed = stored
+      ? (JSON.parse(stored) as Record<string, CourseFile[] | CourseFile>)
+      : (loadSnapshot().courseFiles as Record<
+          string,
+          CourseFile[] | CourseFile
+        >);
+    return Object.fromEntries(
+      Object.entries(parsed).map(([course, value]) => [
+        course,
+        Array.isArray(value)
+          ? value
+          : [{ ...value, id: `course-file-${Date.now()}-${course}` }],
+      ]),
+    );
+  } catch {
+    return {};
+  }
 };
 
-export default function UniCoursePage({ setPage }: { setPage?: (page: 'Today' | 'TimeTracking') => void }) {
-  const { data, setData, toggleTask } = useAppStore();
-  const taskCourses = Array.from(new Set(data.tasks.map(task => courseFromNotes(task.notes)).filter(Boolean)));
-  const [courseNames, setCourseNames] = useState<string[]>(() => { try { const stored = localStorage.getItem('personal-life-os-course-names-v1'); return stored ? JSON.parse(stored) : loadSnapshot().courseNames || []; } catch { return []; } });
-  const [newCourse, setNewCourse] = useState('');
-  const allCourses = Array.from(new Set([...courseNames, ...taskCourses]));
-  const [selectedCourse, setSelectedCourse] = useState('All courses');
-  const courses = selectedCourse === 'All courses' ? allCourses : allCourses.filter(course => course === selectedCourse);
-  const [courseMessage, setCourseMessage] = useState('');
-  const [files, setFiles] = useState<StoredFiles>(readFiles);
-  const [materialFilter, setMaterialFilter] = useState<'all' | 'todo' | 'reviewed'>('all');
-  const [materialQuery, setMaterialQuery] = useState('');
-  const [materialSort, setMaterialSort] = useState<'newest' | 'oldest' | 'name'>('newest');
-  const [courseNotes, setCourseNotes] = useState<Record<string, string>>(() => { try { const stored = localStorage.getItem('personal-life-os-course-notes-v1'); return stored ? JSON.parse(stored) : loadSnapshot().courseNotes || {}; } catch { return {}; } });
-  useEffect(() => { saveSnapshot({ ...loadSnapshot(), courseNames, courseFiles: files, courseNotes }); }, [courseNames, files, courseNotes]);
-  const saveFiles = (next: StoredFiles) => { try { localStorage.setItem('personal-life-os-course-files-v1', JSON.stringify(next)); saveSnapshot({ ...loadSnapshot(), courseFiles: next }); setFiles(next); setCourseMessage('Course materials saved.'); } catch { setCourseMessage('Storage is full. Export a course pack, then remove large files before uploading more.'); } };
-  const upload = (course: string, file: File) => { if (file.size > MAX_COURSE_FILE_BYTES) { setCourseMessage(`${file.name} is larger than 6 MB. Keep large originals in Drive and upload a smaller study copy.`); return; } const reader = new FileReader(); reader.onload = () => { if ((files[course] || []).some(existing => existing.name.toLowerCase() === file.name.toLowerCase())) { setCourseMessage('This file is already uploaded for this course.'); return; } const next = { ...files, [course]: [...(files[course] || []), { id: `course-file-${Date.now()}`, name: file.name, size: file.size, type: file.type, dataUrl: String(reader.result), uploadedAt: new Date().toISOString() }] }; saveFiles(next); }; reader.onerror = () => setCourseMessage('Could not read that file.'); reader.readAsDataURL(file); };
-  const formatSize = (bytes: number) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  const remove = (course: string, fileId: string, name: string) => { if (!window.confirm(`Delete ${name}?`)) return; const next = { ...files, [course]: (files[course] || []).filter(file => file.id !== fileId) }; if (!next[course].length) delete next[course]; saveFiles(next); };
+const readFurtherReading = (): StoredFurtherReading => {
+  try {
+    const stored = localStorage.getItem(
+      "personal-life-os-course-further-reading-v1",
+    );
+    return stored
+      ? JSON.parse(stored)
+      : (loadSnapshot().courseFurtherReading as StoredFurtherReading) || {};
+  } catch {
+    return {};
+  }
+};
 
-  const createStudyTask = (course: string, file: CourseFile) => { setData(current => { const duplicate = current.tasks.some(task => task.scheduledDate === localDateKey() && task.notes === `Course: ${course} · Study · Material: ${file.name}`); if (duplicate) return current; return { ...current, tasks: [{ id: `course-material-task-${Date.now()}`, title: `Study · ${course}: ${file.name}`, description: `Review the uploaded course material: ${file.name}`, minutes: 30, difficulty: 'Medium', priority: 'High', category: 'Manual', timeCategory: 'Study', scheduledDate: localDateKey(), status: 'todo', notes: `Course: ${course} · Study · Material: ${file.name}` }, ...current.tasks] }; }); };
-  const createReviewPlan = (course: string, file: CourseFile) => { const offsets = [1, 2, 4, 7, 14, 28]; setData(current => { const existing = new Set(current.tasks.filter(task => task.notes?.includes(`Material: ${file.name}`)).map(task => `${task.scheduledDate}|${task.notes}`)); const additions = offsets.filter(offset => !existing.has(`${localDateKey(addLocalDays(new Date(), offset))}|Course: ${course} · Review · Material: ${file.name}`)).map(offset => ({ id: `course-material-review-${Date.now()}-${offset}`, title: `Review · ${course}: ${file.name}`, description: `Spaced review after ${offset} days · ${file.name}`, minutes: 15, difficulty: 'Easy' as const, priority: 'Medium' as const, category: 'Manual' as const, timeCategory: 'Study', scheduledDate: localDateKey(addLocalDays(new Date(), offset)), status: 'todo' as const, notes: `Course: ${course} · Review · Material: ${file.name}` })); return additions.length ? { ...current, tasks: [...additions, ...current.tasks] } : current; }); };
-  const toggleReviewed = (course: string, file: CourseFile) => { const next = { ...files, [course]: (files[course] || []).map(item => item.id === file.id ? { ...item, reviewedAt: item.reviewedAt ? undefined : new Date().toISOString() } : item) }; saveFiles(next); };
-  const addCourse = () => { const name = newCourse.trim(); if (!name) return; if (allCourses.some(course => course.toLowerCase() === name.toLowerCase())) { setCourseMessage('That course already exists.'); return; } const next = [...courseNames, name]; setCourseNames(next); localStorage.setItem('personal-life-os-course-names-v1', JSON.stringify(next)); setNewCourse(''); setSelectedCourse(name); setCourseMessage(`${name} created.`); };
-  const exportCoursePack = () => { const blob = new Blob([JSON.stringify({ version: 3, courseNames: allCourses, files, notes: courseNotes }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'personal-life-os-course-pack.json'; link.click(); URL.revokeObjectURL(url); };
-  const importCoursePack = (file: File) => { const reader = new FileReader(); reader.onload = () => { try { const parsed = JSON.parse(String(reader.result)) as { courseNames?: string[]; files?: StoredFiles; notes?: Record<string, string> }; const importedNames = Array.isArray(parsed.courseNames) ? parsed.courseNames.filter(name => typeof name === 'string' && name.trim()) : []; const importedFiles = parsed.files && typeof parsed.files === 'object' ? parsed.files : {}; const importedNotes = parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {}; const mergedNames = Array.from(new Set([...courseNames, ...importedNames])); const mergedFiles = { ...files, ...importedFiles }; const mergedNotes = { ...courseNotes, ...importedNotes }; setCourseNames(mergedNames); setFiles(mergedFiles); setCourseNotes(mergedNotes); localStorage.setItem('personal-life-os-course-names-v1', JSON.stringify(mergedNames)); localStorage.setItem('personal-life-os-course-files-v1', JSON.stringify(mergedFiles)); localStorage.setItem('personal-life-os-course-notes-v1', JSON.stringify(mergedNotes)); } catch { window.alert('Invalid course pack.'); } }; reader.readAsText(file); };
-  const courseTaskStats = (course: string) => { const tasks = data.tasks.filter(task => task.notes?.startsWith(`Course: ${course} ·`)); return { total: tasks.length, done: tasks.filter(task => task.status === 'done').length }; };
-  const courseStudyMinutes = (course: string) => { const ids = new Set(data.tasks.filter(task => courseFromNotes(task.notes) === course).map(task => task.id)); return (loadSnapshot().timeEntries || []).filter(entry => (entry.taskId && ids.has(entry.taskId)) || entry.title === `Study · ${course}`).reduce((sum, entry) => sum + entry.durationMinutes, 0); };
-  const courseWeeklyDone = (course: string) => { const since = localDateKey(addLocalDays(new Date(), -6)); return data.tasks.filter(task => task.notes?.startsWith(`Course: ${course} ·`) && task.status === 'done' && (task.completedAt || task.scheduledDate || '') >= since).length; };
-  const overdueCourseTasks = data.tasks.filter(task => courseFromNotes(task.notes) && task.status !== 'done' && (task.scheduledDate || '') < localDateKey() && (selectedCourse === 'All courses' || courseFromNotes(task.notes) === selectedCourse)).sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
-  const rescheduleCourseTask = (taskId: string) => { setData(current => ({ ...current, tasks: current.tasks.map(task => task.id === taskId ? { ...task, scheduledDate: localDateKey() } : task) })); };
-  const snoozeCourseTask = (taskId: string) => { setData(current => ({ ...current, tasks: current.tasks.map(task => task.id === taskId ? { ...task, scheduledDate: localDateKey(addLocalDays(new Date(), 1)) } : task) })); };
-  const saveCourseNote = (course: string, note: string) => { const next = { ...courseNotes, [course]: note }; setCourseNotes(next); localStorage.setItem('personal-life-os-course-notes-v1', JSON.stringify(next)); };
-  const clearCourseNote = (course: string) => { if (!courseNotes[course] || !window.confirm(`Clear notes for ${course}?`)) return; const next = { ...courseNotes }; delete next[course]; setCourseNotes(next); localStorage.setItem('personal-life-os-course-notes-v1', JSON.stringify(next)); };
-  const removeCourse = (course: string) => { if (!window.confirm(`Remove ${course}? Its materials and notes will be deleted, but existing tasks will remain.`)) return; const nextNames = courseNames.filter(item => item !== course); const nextFiles = { ...files }; delete nextFiles[course]; const nextNotes = { ...courseNotes }; delete nextNotes[course]; setCourseNames(nextNames); saveFiles(nextFiles); setCourseNotes(nextNotes); if (selectedCourse === course) setSelectedCourse('All courses'); localStorage.setItem('personal-life-os-course-names-v1', JSON.stringify(nextNames)); localStorage.setItem('personal-life-os-course-notes-v1', JSON.stringify(nextNotes)); };
-  const createNoteTask = (course: string) => { const note = courseNotes[course]?.trim(); if (!note) return; setData(current => { const notes = `Course: ${course} · Note task`; if (current.tasks.some(task => task.scheduledDate === localDateKey() && task.notes === notes && task.status !== 'done')) return current; return { ...current, tasks: [{ id: `course-note-task-${Date.now()}`, title: `Review course note · ${course}`, description: note, minutes: 30, difficulty: 'Medium', priority: 'High', category: 'Manual', timeCategory: 'Study', scheduledDate: localDateKey(), status: 'todo', notes }, ...current.tasks] }; }); };
-  const startCourseTimer = (course: string) => { localStorage.setItem('personal-life-os-time-prefill-v1', JSON.stringify({ title: `Study · ${course}`, category: 'Study' })); setPage?.('TimeTracking'); };
-  const startTaskTimer = (task: { id: string; title: string; description?: string; minutes?: number; difficulty?: 'Easy' | 'Medium' | 'Hard'; category?: 'Daily progress' | 'Habit' | 'Manual'; status?: 'todo' | 'done'; timeCategory?: string }) => { beginTaskTimer(task as any); setPage?.('TimeTracking'); };
-  const createCourseTask = (course: string) => { setData(current => { const notes = `Course: ${course} · Study`; if (current.tasks.some(task => task.scheduledDate === localDateKey() && task.notes === notes && task.status !== 'done')) return current; return { ...current, tasks: [{ id: `course-study-task-${Date.now()}`, title: `Study · ${course}`, description: `Focused study session for ${course}`, minutes: 30, difficulty: 'Medium', priority: 'High', category: 'Manual', timeCategory: 'Study', scheduledDate: localDateKey(), status: 'todo', notes }, ...current.tasks] }; }); };
-  return <div className="content uni-course-page">
-    <div className="uni-course-page-header"><div><span className="pill purple">UNI COURSE</span><h2>Turn university courses into a steady rhythm.</h2><p className="muted">Plan preview, study, review, assignment and exam work in one focused place.</p></div><div className="uni-course-header-side"><span className="uni-course-count">{allCourses.length} course{allCourses.length === 1 ? '' : 's'}</span><div className="uni-course-add"><input value={newCourse} onChange={event => setNewCourse(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') addCourse(); }} placeholder="New course name"/><button className="primary" onClick={addCourse}>Add course</button></div><div className="uni-course-backup"><button className="secondary" onClick={exportCoursePack}>Export course pack</button><label className="secondary upload-button">Import pack<input type="file" accept="application/json" onChange={event => { const file = event.target.files?.[0]; if (file) importCoursePack(file); event.currentTarget.value = ''; }}/></label></div></div></div>
-    {courseMessage && <div className="course-message" role="status">{courseMessage}<button onClick={() => setCourseMessage('')}>×</button></div>}
-    <section className="course-command-bar"><div><small>COURSE VIEW</small><select value={selectedCourse} onChange={event => setSelectedCourse(event.target.value)}><option>All courses</option>{allCourses.map(course => <option key={course}>{course}</option>)}</select></div><div className="course-command-stat"><span>Open tasks</span><b>{data.tasks.filter(task => courseFromNotes(task.notes) && task.status !== 'done' && (selectedCourse === 'All courses' || courseFromNotes(task.notes) === selectedCourse)).length}</b></div><div className="course-command-stat"><span>Overdue</span><b>{data.tasks.filter(task => courseFromNotes(task.notes) && task.status !== 'done' && Boolean(task.scheduledDate) && (task.scheduledDate || '') < localDateKey() && (selectedCourse === 'All courses' || courseFromNotes(task.notes) === selectedCourse)).length}</b></div><div className="course-command-stat"><span>Study time</span><b>{courses.reduce((sum, course) => sum + courseStudyMinutes(course), 0)}m</b></div><button className="primary" disabled={selectedCourse === 'All courses'} onClick={() => selectedCourse !== 'All courses' && createCourseTask(selectedCourse)}>Study selected course</button></section>
-    <CourseTaskTemplates onStartTimer={startTaskTimer} />
-    {overdueCourseTasks.length > 0 && <section className="course-overdue"><div className="section-title"><div><span className="pill purple">NEEDS ATTENTION</span><h3>Overdue course tasks</h3><span className="muted">{overdueCourseTasks.length} unfinished task{overdueCourseTasks.length === 1 ? '' : 's'} need review.</span></div></div><div className="course-overdue-list">{overdueCourseTasks.slice(0, 8).map(task => <div className="course-overdue-row" key={task.id}><b>{task.title}</b><span>{task.scheduledDate} · {task.minutes} min</span><button className="secondary" onClick={() => toggleTask(task.id)}>Complete</button><button className="secondary" onClick={() => rescheduleCourseTask(task.id)}>Move to today</button><button className="secondary" onClick={() => snoozeCourseTask(task.id)}>Snooze 1 day</button></div>)}</div></section>}
-    <section className="course-management"><div className="section-title"><div><span className="pill purple">COURSE MANAGEMENT</span><h3>Manage standalone courses</h3><span className="muted">Removing a course keeps its existing tasks and history.</span></div></div><div className="course-management-list">{courseNames.length ? courseNames.map(course => <div className="course-management-row" key={course}><b>{course}</b><button className="secondary danger-action" onClick={() => removeCourse(course)}>Remove course</button></div>) : <span className="muted">No standalone courses yet.</span>}</div></section>
-    <div className="course-today-link"><button className="secondary" onClick={() => setPage?.('Today')}>Open Today to execute tasks</button><button className="secondary" onClick={() => setPage?.('TimeTracking')}>Open time tracking</button></div>
-    <section className="course-notes"><div className="section-title"><div><span className="pill purple">COURSE NOTES</span><h3>Keep context for each course</h3><span className="muted">Save lecture notes, exam scope, questions and goals.</span></div></div><div className="course-notes-grid">{courses.map(course => <label className="course-note-card" key={course}><b>{course}</b><textarea value={courseNotes[course] || ''} onChange={event => saveCourseNote(course, event.target.value)} placeholder="Write course notes..." /><div className="course-note-actions"><button type="button" className="secondary" onClick={() => createNoteTask(course)} disabled={!courseNotes[course]?.trim()}>Turn note into task</button><button type="button" className="secondary" onClick={() => startCourseTimer(course)}>Start timer</button><button type="button" className="secondary danger-action" onClick={() => clearCourseNote(course)} disabled={!courseNotes[course]}>Clear notes</button></div></label>)}</div></section>
-    <section className="course-task-summary"><div className="section-title"><div><span className="pill teal">COURSE PROGRESS</span><h3>Study activity by course</h3><span className="muted">See which courses are moving forward.</span></div></div><div className="course-task-summary-grid">{courses.map(course => { const stats = courseTaskStats(course); return <div className="course-task-summary-card" key={course}><b>{course}</b><span>{stats.done}/{stats.total} tasks done</span><div className="course-task-progress"><i style={{ width: stats.total ? `${Math.round(stats.done / stats.total * 100)}%` : '0%' }} /></div><button className="secondary" onClick={() => createCourseTask(course)}>Start course study</button></div>; })}</div></section>
-    <section className="course-weekly-activity"><div className="section-title"><div><span className="pill teal">THIS WEEK</span><h3>Course activity</h3><span className="muted">Completed course tasks in the last 7 days.</span></div></div><div className="course-weekly-grid">{courses.map(course => <div className="course-weekly-card" key={course}><b>{course}</b><strong>{courseWeeklyDone(course)}</strong><span>completed</span></div>)}</div></section>
-    <section className="course-next-tasks"><div className="section-title"><div><span className="pill purple">NEXT UP</span><h3>Upcoming course tasks</h3><span className="muted">Your next unfinished step for each course.</span></div></div><div className="course-next-task-grid">{courses.map(course => { const nextTask = data.tasks.filter(task => task.notes?.startsWith(`Course: ${course} ·`) && task.status !== 'done' && (task.scheduledDate || "") >= localDateKey()).sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""))[0]; return <div className="course-next-task-card" key={course}><b>{course}</b>{nextTask ? <><span>{nextTask.title}</span><small>{nextTask.scheduledDate} · {nextTask.minutes} min</small><button className="secondary" onClick={() => startTaskTimer(nextTask)}>Start timer</button><button className="secondary" onClick={() => toggleTask(nextTask.id)}>Complete</button></> : <span className="muted">No upcoming task</span>}</div>; })}</div></section>
-    <section className="course-materials"><div className="section-title"><div><span className="pill teal">COURSE MATERIALS</span><h3>Slides and lecture files</h3><span className="muted">Upload multiple PPT/PPTX decks for each course.</span></div><div className='course-material-filter'><input className='course-material-search' value={materialQuery} onChange={event => setMaterialQuery(event.target.value)} placeholder='Search files'/><select className='course-material-sort' value={materialSort} onChange={event => setMaterialSort(event.target.value as 'newest' | 'oldest' | 'name')}><option value='newest'>Newest</option><option value='oldest'>Oldest</option><option value='name'>Name</option></select><button className={materialFilter === 'all' ? 'active' : 'secondary'} onClick={() => setMaterialFilter('all')}>All</button><button className={materialFilter === 'todo' ? 'active' : 'secondary'} onClick={() => setMaterialFilter('todo')}>Needs review</button><button className={materialFilter === 'reviewed' ? 'active' : 'secondary'} onClick={() => setMaterialFilter('reviewed')}>Reviewed</button></div></div>{courses.length ? <div className="course-material-grid">{courses.map(course => { const courseFiles = files[course] || []; const visibleFiles = courseFiles.filter(file => (materialFilter === 'all' || (materialFilter === 'reviewed' ? Boolean(file.reviewedAt) : !file.reviewedAt)) && (!materialQuery.trim() || file.name.toLowerCase().includes(materialQuery.trim().toLowerCase()))).sort((a, b) => materialSort === 'name' ? a.name.localeCompare(b.name) : materialSort === 'oldest' ? (a.uploadedAt || '').localeCompare(b.uploadedAt || '') : (b.uploadedAt || '').localeCompare(a.uploadedAt || '')); return <article className="course-material-card" key={course}><div className="course-material-title"><b>{course}</b><small>{courseFiles.length ? `${courseFiles.length} file${courseFiles.length === 1 ? '' : 's'}` : 'No slide deck uploaded'}</small></div><div className="course-material-files">{visibleFiles.map(file => <div className="course-material-file" key={file.id}><span><b>{file.name}</b><small>{formatSize(file.size)}</small></span><button className="secondary" onClick={() => createStudyTask(course, file)}>Study task</button><button className="secondary" onClick={() => createReviewPlan(course, file)}>Review plan</button><button className="secondary" onClick={() => toggleReviewed(course, file)}>{file.reviewedAt ? 'Reviewed ' + file.reviewedAt.slice(0, 10) : 'Mark reviewed'}</button><a className="secondary" href={file.dataUrl} download={file.name}>Download</a><button className="secondary danger-action" onClick={() => remove(course, file.id, file.name)}>Delete</button></div>)}</div><label className="secondary upload-button course-material-upload">+ Upload PPT<input type="file" accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={event => { const selected = event.target.files?.[0]; if (selected) upload(course, selected); event.currentTarget.value = ''; }}/></label></article>; })}</div> : <p className="muted">Create a course plan first, then its lecture materials will appear here.</p>}</section>
-    <UpcomingCourseTasks toggleTask={toggleTask} onStartTimer={startTaskTimer} />
-  </div>;
+export default function UniCoursePage({
+  setPage,
+}: {
+  setPage?: (page: "Today" | "TimeTracking") => void;
+}) {
+  const { data, setData, toggleTask } = useAppStore();
+  const taskCourses = Array.from(
+    new Set(
+      data.tasks.map((task) => courseFromNotes(task.notes)).filter(Boolean),
+    ),
+  );
+  const [courseNames, setCourseNames] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("personal-life-os-course-names-v1");
+      return stored ? JSON.parse(stored) : loadSnapshot().courseNames || [];
+    } catch {
+      return [];
+    }
+  });
+  const [newCourse, setNewCourse] = useState("");
+  const allCourses = Array.from(new Set([...courseNames, ...taskCourses]));
+  const [selectedCourse, setSelectedCourse] = useState("All courses");
+  const courses =
+    selectedCourse === "All courses"
+      ? allCourses
+      : allCourses.filter((course) => course === selectedCourse);
+  const [courseMessage, setCourseMessage] = useState("");
+  const [files, setFiles] = useState<StoredFiles>(readFiles);
+  const [furtherReading, setFurtherReading] =
+    useState<StoredFurtherReading>(readFurtherReading);
+  const [materialFilter, setMaterialFilter] = useState<
+    "all" | "todo" | "reviewed"
+  >("all");
+  const [materialQuery, setMaterialQuery] = useState("");
+  const [materialSort, setMaterialSort] = useState<
+    "newest" | "oldest" | "name"
+  >("newest");
+  const [courseNotes, setCourseNotes] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem("personal-life-os-course-notes-v1");
+      return stored ? JSON.parse(stored) : loadSnapshot().courseNotes || {};
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    saveSnapshot({
+      ...loadSnapshot(),
+      courseNames,
+      courseFiles: files,
+      courseNotes,
+      courseFurtherReading: furtherReading,
+    });
+  }, [courseNames, files, courseNotes, furtherReading]);
+  const saveFiles = (next: StoredFiles) => {
+    try {
+      localStorage.setItem(
+        "personal-life-os-course-files-v1",
+        JSON.stringify(next),
+      );
+      saveSnapshot({ ...loadSnapshot(), courseFiles: next });
+      setFiles(next);
+      setCourseMessage("Course materials saved.");
+    } catch {
+      setCourseMessage(
+        "Storage is full. Export a course pack, then remove large files before uploading more.",
+      );
+    }
+  };
+  const saveFurtherReading = (next: StoredFurtherReading) => {
+    try {
+      localStorage.setItem(
+        "personal-life-os-course-further-reading-v1",
+        JSON.stringify(next),
+      );
+      saveSnapshot({ ...loadSnapshot(), courseFurtherReading: next });
+      setFurtherReading(next);
+      setCourseMessage("Further reading saved.");
+    } catch {
+      setCourseMessage(
+        "Storage is full. Remove a large document or keep the original in Drive.",
+      );
+    }
+  };
+  const upload = (course: string, file: File) => {
+    if (file.size > MAX_COURSE_FILE_BYTES) {
+      setCourseMessage(
+        `${file.name} is larger than 6 MB. Keep large originals in Drive and upload a smaller study copy.`,
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (
+        (files[course] || []).some(
+          (existing) => existing.name.toLowerCase() === file.name.toLowerCase(),
+        )
+      ) {
+        setCourseMessage("This file is already uploaded for this course.");
+        return;
+      }
+      const next = {
+        ...files,
+        [course]: [
+          ...(files[course] || []),
+          {
+            id: `course-file-${Date.now()}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: String(reader.result),
+            uploadedAt: new Date().toISOString(),
+          },
+        ],
+      };
+      saveFiles(next);
+    };
+    reader.onerror = () => setCourseMessage("Could not read that file.");
+    reader.readAsDataURL(file);
+  };
+  const uploadFurtherReading = (course: string, file: File) => {
+    if (file.size > MAX_COURSE_FILE_BYTES) {
+      setCourseMessage(`${file.name} is larger than 6 MB.`);
+      return;
+    }
+    if (
+      (furtherReading[course] || []).some(
+        (item) => item.name.toLowerCase() === file.name.toLowerCase(),
+      )
+    ) {
+      setCourseMessage("This reading is already uploaded for this course.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      saveFurtherReading({
+        ...furtherReading,
+        [course]: [
+          ...(furtherReading[course] || []),
+          {
+            id: `course-reading-${Date.now()}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: String(reader.result),
+            uploadedAt: new Date().toISOString(),
+            notes: "",
+          },
+        ],
+      });
+    reader.onerror = () => setCourseMessage("Could not read that document.");
+    reader.readAsDataURL(file);
+  };
+  const updateReadingNotes = (course: string, fileId: string, notes: string) => {
+    const next = {
+      ...furtherReading,
+      [course]: (furtherReading[course] || []).map((item) =>
+        item.id === fileId ? { ...item, notes } : item,
+      ),
+    };
+    setFurtherReading(next);
+    localStorage.setItem(
+      "personal-life-os-course-further-reading-v1",
+      JSON.stringify(next),
+    );
+  };
+  const removeFurtherReading = (
+    course: string,
+    fileId: string,
+    name: string,
+  ) => {
+    if (!window.confirm(`Delete ${name} from further reading?`)) return;
+    const next = {
+      ...furtherReading,
+      [course]: (furtherReading[course] || []).filter(
+        (item) => item.id !== fileId,
+      ),
+    };
+    if (!next[course].length) delete next[course];
+    saveFurtherReading(next);
+  };
+  const formatSize = (bytes: number) =>
+    bytes < 1024 * 1024
+      ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const remove = (course: string, fileId: string, name: string) => {
+    if (!window.confirm(`Delete ${name}?`)) return;
+    const next = {
+      ...files,
+      [course]: (files[course] || []).filter((file) => file.id !== fileId),
+    };
+    if (!next[course].length) delete next[course];
+    saveFiles(next);
+  };
+
+  const createStudyTask = (course: string, file: CourseFile) => {
+    setData((current) => {
+      const duplicate = current.tasks.some(
+        (task) =>
+          task.scheduledDate === localDateKey() &&
+          task.notes === `Course: ${course} · Study · Material: ${file.name}`,
+      );
+      if (duplicate) return current;
+      return {
+        ...current,
+        tasks: [
+          {
+            id: `course-material-task-${Date.now()}`,
+            title: `Study · ${course}: ${file.name}`,
+            description: `Review the uploaded course material: ${file.name}`,
+            minutes: 30,
+            difficulty: "Medium",
+            priority: "High",
+            category: "Manual",
+            timeCategory: "Study",
+            scheduledDate: localDateKey(),
+            status: "todo",
+            notes: `Course: ${course} · Study · Material: ${file.name}`,
+          },
+          ...current.tasks,
+        ],
+      };
+    });
+  };
+  const createReviewPlan = (course: string, file: CourseFile) => {
+    const offsets = [1, 2, 4, 7, 14, 28];
+    setData((current) => {
+      const existing = new Set(
+        current.tasks
+          .filter((task) => task.notes?.includes(`Material: ${file.name}`))
+          .map((task) => `${task.scheduledDate}|${task.notes}`),
+      );
+      const additions = offsets
+        .filter(
+          (offset) =>
+            !existing.has(
+              `${localDateKey(addLocalDays(new Date(), offset))}|Course: ${course} · Review · Material: ${file.name}`,
+            ),
+        )
+        .map((offset) => ({
+          id: `course-material-review-${Date.now()}-${offset}`,
+          title: `Review · ${course}: ${file.name}`,
+          description: `Spaced review after ${offset} days · ${file.name}`,
+          minutes: 15,
+          difficulty: "Easy" as const,
+          priority: "Medium" as const,
+          category: "Manual" as const,
+          timeCategory: "Study",
+          scheduledDate: localDateKey(addLocalDays(new Date(), offset)),
+          status: "todo" as const,
+          notes: `Course: ${course} · Review · Material: ${file.name}`,
+        }));
+      return additions.length
+        ? { ...current, tasks: [...additions, ...current.tasks] }
+        : current;
+    });
+  };
+  const toggleReviewed = (course: string, file: CourseFile) => {
+    const next = {
+      ...files,
+      [course]: (files[course] || []).map((item) =>
+        item.id === file.id
+          ? {
+              ...item,
+              reviewedAt: item.reviewedAt
+                ? undefined
+                : new Date().toISOString(),
+            }
+          : item,
+      ),
+    };
+    saveFiles(next);
+  };
+  const addCourse = () => {
+    const name = newCourse.trim();
+    if (!name) return;
+    if (
+      allCourses.some((course) => course.toLowerCase() === name.toLowerCase())
+    ) {
+      setCourseMessage("That course already exists.");
+      return;
+    }
+    const next = [...courseNames, name];
+    setCourseNames(next);
+    localStorage.setItem(
+      "personal-life-os-course-names-v1",
+      JSON.stringify(next),
+    );
+    setNewCourse("");
+    setSelectedCourse(name);
+    setCourseMessage(`${name} created.`);
+  };
+  const exportCoursePack = () => {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            version: 4,
+            courseNames: allCourses,
+            files,
+            notes: courseNotes,
+            furtherReading,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: "application/json" },
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "personal-life-os-course-pack.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const importCoursePack = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result)) as {
+          courseNames?: string[];
+          files?: StoredFiles;
+          notes?: Record<string, string>;
+          furtherReading?: StoredFurtherReading;
+        };
+        const importedNames = Array.isArray(parsed.courseNames)
+          ? parsed.courseNames.filter(
+              (name) => typeof name === "string" && name.trim(),
+            )
+          : [];
+        const importedFiles =
+          parsed.files && typeof parsed.files === "object" ? parsed.files : {};
+        const importedNotes =
+          parsed.notes && typeof parsed.notes === "object" ? parsed.notes : {};
+        const importedReading =
+          parsed.furtherReading && typeof parsed.furtherReading === "object"
+            ? parsed.furtherReading
+            : {};
+        const mergedNames = Array.from(
+          new Set([...courseNames, ...importedNames]),
+        );
+        const mergedFiles = { ...files, ...importedFiles };
+        const mergedNotes = { ...courseNotes, ...importedNotes };
+        const mergedReading = { ...furtherReading, ...importedReading };
+        setCourseNames(mergedNames);
+        setFiles(mergedFiles);
+        setCourseNotes(mergedNotes);
+        setFurtherReading(mergedReading);
+        localStorage.setItem(
+          "personal-life-os-course-names-v1",
+          JSON.stringify(mergedNames),
+        );
+        localStorage.setItem(
+          "personal-life-os-course-files-v1",
+          JSON.stringify(mergedFiles),
+        );
+        localStorage.setItem(
+          "personal-life-os-course-notes-v1",
+          JSON.stringify(mergedNotes),
+        );
+        localStorage.setItem(
+          "personal-life-os-course-further-reading-v1",
+          JSON.stringify(mergedReading),
+        );
+      } catch {
+        window.alert("Invalid course pack.");
+      }
+    };
+    reader.readAsText(file);
+  };
+  const courseTaskStats = (course: string) => {
+    const tasks = data.tasks.filter((task) =>
+      task.notes?.startsWith(`Course: ${course} ·`),
+    );
+    return {
+      total: tasks.length,
+      done: tasks.filter((task) => task.status === "done").length,
+    };
+  };
+  const courseStudyMinutes = (course: string) => {
+    const ids = new Set(
+      data.tasks
+        .filter((task) => courseFromNotes(task.notes) === course)
+        .map((task) => task.id),
+    );
+    return (loadSnapshot().timeEntries || [])
+      .filter(
+        (entry) =>
+          (entry.taskId && ids.has(entry.taskId)) ||
+          entry.title === `Study · ${course}`,
+      )
+      .reduce((sum, entry) => sum + entry.durationMinutes, 0);
+  };
+  const courseWeeklyDone = (course: string) => {
+    const since = localDateKey(addLocalDays(new Date(), -6));
+    return data.tasks.filter(
+      (task) =>
+        task.notes?.startsWith(`Course: ${course} ·`) &&
+        task.status === "done" &&
+        (task.completedAt || task.scheduledDate || "") >= since,
+    ).length;
+  };
+  const overdueCourseTasks = data.tasks
+    .filter(
+      (task) =>
+        courseFromNotes(task.notes) &&
+        task.status !== "done" &&
+        (task.scheduledDate || "") < localDateKey() &&
+        (selectedCourse === "All courses" ||
+          courseFromNotes(task.notes) === selectedCourse),
+    )
+    .sort((a, b) =>
+      (a.scheduledDate || "").localeCompare(b.scheduledDate || ""),
+    );
+  const rescheduleCourseTask = (taskId: string) => {
+    setData((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) =>
+        task.id === taskId ? { ...task, scheduledDate: localDateKey() } : task,
+      ),
+    }));
+  };
+  const snoozeCourseTask = (taskId: string) => {
+    setData((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              scheduledDate: localDateKey(addLocalDays(new Date(), 1)),
+            }
+          : task,
+      ),
+    }));
+  };
+  const saveCourseNote = (course: string, note: string) => {
+    const next = { ...courseNotes, [course]: note };
+    setCourseNotes(next);
+    localStorage.setItem(
+      "personal-life-os-course-notes-v1",
+      JSON.stringify(next),
+    );
+  };
+  const clearCourseNote = (course: string) => {
+    if (!courseNotes[course] || !window.confirm(`Clear notes for ${course}?`))
+      return;
+    const next = { ...courseNotes };
+    delete next[course];
+    setCourseNotes(next);
+    localStorage.setItem(
+      "personal-life-os-course-notes-v1",
+      JSON.stringify(next),
+    );
+  };
+  const removeCourse = (course: string) => {
+    if (
+      !window.confirm(
+        `Remove ${course}? Its materials and notes will be deleted, but existing tasks will remain.`,
+      )
+    )
+      return;
+    const nextNames = courseNames.filter((item) => item !== course);
+    const nextFiles = { ...files };
+    delete nextFiles[course];
+    const nextNotes = { ...courseNotes };
+    delete nextNotes[course];
+    const nextReading = { ...furtherReading };
+    delete nextReading[course];
+    setCourseNames(nextNames);
+    saveFiles(nextFiles);
+    setCourseNotes(nextNotes);
+    saveFurtherReading(nextReading);
+    if (selectedCourse === course) setSelectedCourse("All courses");
+    localStorage.setItem(
+      "personal-life-os-course-names-v1",
+      JSON.stringify(nextNames),
+    );
+    localStorage.setItem(
+      "personal-life-os-course-notes-v1",
+      JSON.stringify(nextNotes),
+    );
+  };
+  const createNoteTask = (course: string) => {
+    const note = courseNotes[course]?.trim();
+    if (!note) return;
+    setData((current) => {
+      const notes = `Course: ${course} · Note task`;
+      if (
+        current.tasks.some(
+          (task) =>
+            task.scheduledDate === localDateKey() &&
+            task.notes === notes &&
+            task.status !== "done",
+        )
+      )
+        return current;
+      return {
+        ...current,
+        tasks: [
+          {
+            id: `course-note-task-${Date.now()}`,
+            title: `Review course note · ${course}`,
+            description: note,
+            minutes: 30,
+            difficulty: "Medium",
+            priority: "High",
+            category: "Manual",
+            timeCategory: "Study",
+            scheduledDate: localDateKey(),
+            status: "todo",
+            notes,
+          },
+          ...current.tasks,
+        ],
+      };
+    });
+  };
+  const startCourseTimer = (course: string) => {
+    localStorage.setItem(
+      "personal-life-os-time-prefill-v1",
+      JSON.stringify({ title: `Study · ${course}`, category: "Study" }),
+    );
+    setPage?.("TimeTracking");
+  };
+  const startTaskTimer = (task: {
+    id: string;
+    title: string;
+    description?: string;
+    minutes?: number;
+    difficulty?: "Easy" | "Medium" | "Hard";
+    category?: "Daily progress" | "Habit" | "Manual";
+    status?: "todo" | "done";
+    timeCategory?: string;
+  }) => {
+    beginTaskTimer(task as any);
+    setPage?.("TimeTracking");
+  };
+  const createCourseTask = (course: string) => {
+    setData((current) => {
+      const notes = `Course: ${course} · Study`;
+      if (
+        current.tasks.some(
+          (task) =>
+            task.scheduledDate === localDateKey() &&
+            task.notes === notes &&
+            task.status !== "done",
+        )
+      )
+        return current;
+      return {
+        ...current,
+        tasks: [
+          {
+            id: `course-study-task-${Date.now()}`,
+            title: `Study · ${course}`,
+            description: `Focused study session for ${course}`,
+            minutes: 30,
+            difficulty: "Medium",
+            priority: "High",
+            category: "Manual",
+            timeCategory: "Study",
+            scheduledDate: localDateKey(),
+            status: "todo",
+            notes,
+          },
+          ...current.tasks,
+        ],
+      };
+    });
+  };
+  return (
+    <div className="content uni-course-page">
+      <div className="uni-course-page-header">
+        <div>
+          <span className="pill purple">UNI COURSE</span>
+          <h2>Turn university courses into a steady rhythm.</h2>
+          <p className="muted">
+            Plan preview, study, review, assignment and exam work in one focused
+            place.
+          </p>
+        </div>
+        <div className="uni-course-header-side">
+          <span className="uni-course-count">
+            {allCourses.length} course{allCourses.length === 1 ? "" : "s"}
+          </span>
+          <div className="uni-course-add">
+            <input
+              value={newCourse}
+              onChange={(event) => setNewCourse(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") addCourse();
+              }}
+              placeholder="New course name"
+            />
+            <button className="primary" onClick={addCourse}>
+              Add course
+            </button>
+          </div>
+          <div className="uni-course-backup">
+            <button className="secondary" onClick={exportCoursePack}>
+              Export course pack
+            </button>
+            <label className="secondary upload-button">
+              Import pack
+              <input
+                type="file"
+                accept="application/json"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) importCoursePack(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+      {courseMessage && (
+        <div className="course-message" role="status">
+          {courseMessage}
+          <button onClick={() => setCourseMessage("")}>×</button>
+        </div>
+      )}
+      <section className="course-command-bar">
+        <div>
+          <small>COURSE VIEW</small>
+          <select
+            value={selectedCourse}
+            onChange={(event) => setSelectedCourse(event.target.value)}
+          >
+            <option>All courses</option>
+            {allCourses.map((course) => (
+              <option key={course}>{course}</option>
+            ))}
+          </select>
+        </div>
+        <div className="course-command-stat">
+          <span>Open tasks</span>
+          <b>
+            {
+              data.tasks.filter(
+                (task) =>
+                  courseFromNotes(task.notes) &&
+                  task.status !== "done" &&
+                  (selectedCourse === "All courses" ||
+                    courseFromNotes(task.notes) === selectedCourse),
+              ).length
+            }
+          </b>
+        </div>
+        <div className="course-command-stat">
+          <span>Overdue</span>
+          <b>
+            {
+              data.tasks.filter(
+                (task) =>
+                  courseFromNotes(task.notes) &&
+                  task.status !== "done" &&
+                  Boolean(task.scheduledDate) &&
+                  (task.scheduledDate || "") < localDateKey() &&
+                  (selectedCourse === "All courses" ||
+                    courseFromNotes(task.notes) === selectedCourse),
+              ).length
+            }
+          </b>
+        </div>
+        <div className="course-command-stat">
+          <span>Study time</span>
+          <b>
+            {courses.reduce(
+              (sum, course) => sum + courseStudyMinutes(course),
+              0,
+            )}
+            m
+          </b>
+        </div>
+        <button
+          className="primary"
+          disabled={selectedCourse === "All courses"}
+          onClick={() =>
+            selectedCourse !== "All courses" && createCourseTask(selectedCourse)
+          }
+        >
+          Study selected course
+        </button>
+      </section>
+      <CourseTaskTemplates onStartTimer={startTaskTimer} />
+      {overdueCourseTasks.length > 0 && (
+        <section className="course-overdue">
+          <div className="section-title">
+            <div>
+              <span className="pill purple">NEEDS ATTENTION</span>
+              <h3>Overdue course tasks</h3>
+              <span className="muted">
+                {overdueCourseTasks.length} unfinished task
+                {overdueCourseTasks.length === 1 ? "" : "s"} need review.
+              </span>
+            </div>
+          </div>
+          <div className="course-overdue-list">
+            {overdueCourseTasks.slice(0, 8).map((task) => (
+              <div className="course-overdue-row" key={task.id}>
+                <b>{task.title}</b>
+                <span>
+                  {task.scheduledDate} · {task.minutes} min
+                </span>
+                <button
+                  className="secondary"
+                  onClick={() => toggleTask(task.id)}
+                >
+                  Complete
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => rescheduleCourseTask(task.id)}
+                >
+                  Move to today
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => snoozeCourseTask(task.id)}
+                >
+                  Snooze 1 day
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      <section className="course-management">
+        <div className="section-title">
+          <div>
+            <span className="pill purple">COURSE MANAGEMENT</span>
+            <h3>Manage standalone courses</h3>
+            <span className="muted">
+              Removing a course keeps its existing tasks and history.
+            </span>
+          </div>
+        </div>
+        <div className="course-management-list">
+          {courseNames.length ? (
+            courseNames.map((course) => (
+              <div className="course-management-row" key={course}>
+                <b>{course}</b>
+                <button
+                  className="secondary danger-action"
+                  onClick={() => removeCourse(course)}
+                >
+                  Remove course
+                </button>
+              </div>
+            ))
+          ) : (
+            <span className="muted">No standalone courses yet.</span>
+          )}
+        </div>
+      </section>
+      <div className="course-today-link">
+        <button className="secondary" onClick={() => setPage?.("Today")}>
+          Open Today to execute tasks
+        </button>
+        <button className="secondary" onClick={() => setPage?.("TimeTracking")}>
+          Open time tracking
+        </button>
+      </div>
+      <section className="course-notes">
+        <div className="section-title">
+          <div>
+            <span className="pill purple">COURSE NOTES</span>
+            <h3>Keep context for each course</h3>
+            <span className="muted">
+              Save lecture notes, exam scope, questions and goals.
+            </span>
+          </div>
+        </div>
+        <div className="course-notes-grid">
+          {courses.map((course) => (
+            <label className="course-note-card" key={course}>
+              <b>{course}</b>
+              <textarea
+                value={courseNotes[course] || ""}
+                onChange={(event) => saveCourseNote(course, event.target.value)}
+                placeholder="Write course notes..."
+              />
+              <div className="course-note-actions">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => createNoteTask(course)}
+                  disabled={!courseNotes[course]?.trim()}
+                >
+                  Turn note into task
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => startCourseTimer(course)}
+                >
+                  Start timer
+                </button>
+                <button
+                  type="button"
+                  className="secondary danger-action"
+                  onClick={() => clearCourseNote(course)}
+                  disabled={!courseNotes[course]}
+                >
+                  Clear notes
+                </button>
+              </div>
+            </label>
+          ))}
+        </div>
+      </section>
+      <section className="course-task-summary">
+        <div className="section-title">
+          <div>
+            <span className="pill teal">COURSE PROGRESS</span>
+            <h3>Study activity by course</h3>
+            <span className="muted">See which courses are moving forward.</span>
+          </div>
+        </div>
+        <div className="course-task-summary-grid">
+          {courses.map((course) => {
+            const stats = courseTaskStats(course);
+            return (
+              <div className="course-task-summary-card" key={course}>
+                <b>{course}</b>
+                <span>
+                  {stats.done}/{stats.total} tasks done
+                </span>
+                <div className="course-task-progress">
+                  <i
+                    style={{
+                      width: stats.total
+                        ? `${Math.round((stats.done / stats.total) * 100)}%`
+                        : "0%",
+                    }}
+                  />
+                </div>
+                <button
+                  className="secondary"
+                  onClick={() => createCourseTask(course)}
+                >
+                  Start course study
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="course-weekly-activity">
+        <div className="section-title">
+          <div>
+            <span className="pill teal">THIS WEEK</span>
+            <h3>Course activity</h3>
+            <span className="muted">
+              Completed course tasks in the last 7 days.
+            </span>
+          </div>
+        </div>
+        <div className="course-weekly-grid">
+          {courses.map((course) => (
+            <div className="course-weekly-card" key={course}>
+              <b>{course}</b>
+              <strong>{courseWeeklyDone(course)}</strong>
+              <span>completed</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="course-next-tasks">
+        <div className="section-title">
+          <div>
+            <span className="pill purple">NEXT UP</span>
+            <h3>Upcoming course tasks</h3>
+            <span className="muted">
+              Your next unfinished step for each course.
+            </span>
+          </div>
+        </div>
+        <div className="course-next-task-grid">
+          {courses.map((course) => {
+            const nextTask = data.tasks
+              .filter(
+                (task) =>
+                  task.notes?.startsWith(`Course: ${course} ·`) &&
+                  task.status !== "done" &&
+                  (task.scheduledDate || "") >= localDateKey(),
+              )
+              .sort((a, b) =>
+                (a.scheduledDate || "").localeCompare(b.scheduledDate || ""),
+              )[0];
+            return (
+              <div className="course-next-task-card" key={course}>
+                <b>{course}</b>
+                {nextTask ? (
+                  <>
+                    <span>{nextTask.title}</span>
+                    <small>
+                      {nextTask.scheduledDate} · {nextTask.minutes} min
+                    </small>
+                    <button
+                      className="secondary"
+                      onClick={() => startTaskTimer(nextTask)}
+                    >
+                      Start timer
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => toggleTask(nextTask.id)}
+                    >
+                      Complete
+                    </button>
+                  </>
+                ) : (
+                  <span className="muted">No upcoming task</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="course-materials">
+        <div className="section-title">
+          <div>
+            <span className="pill teal">COURSE MATERIALS</span>
+            <h3>Slides and lecture files</h3>
+            <span className="muted">
+              Upload multiple PPT/PPTX decks for each course.
+            </span>
+          </div>
+          <div className="course-material-filter">
+            <input
+              className="course-material-search"
+              value={materialQuery}
+              onChange={(event) => setMaterialQuery(event.target.value)}
+              placeholder="Search files"
+            />
+            <select
+              className="course-material-sort"
+              value={materialSort}
+              onChange={(event) =>
+                setMaterialSort(
+                  event.target.value as "newest" | "oldest" | "name",
+                )
+              }
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="name">Name</option>
+            </select>
+            <button
+              className={materialFilter === "all" ? "active" : "secondary"}
+              onClick={() => setMaterialFilter("all")}
+            >
+              All
+            </button>
+            <button
+              className={materialFilter === "todo" ? "active" : "secondary"}
+              onClick={() => setMaterialFilter("todo")}
+            >
+              Needs review
+            </button>
+            <button
+              className={materialFilter === "reviewed" ? "active" : "secondary"}
+              onClick={() => setMaterialFilter("reviewed")}
+            >
+              Reviewed
+            </button>
+          </div>
+        </div>
+        {courses.length ? (
+          <div className="course-material-grid">
+            {courses.map((course) => {
+              const courseFiles = files[course] || [];
+              const visibleFiles = courseFiles
+                .filter(
+                  (file) =>
+                    (materialFilter === "all" ||
+                      (materialFilter === "reviewed"
+                        ? Boolean(file.reviewedAt)
+                        : !file.reviewedAt)) &&
+                    (!materialQuery.trim() ||
+                      file.name
+                        .toLowerCase()
+                        .includes(materialQuery.trim().toLowerCase())),
+                )
+                .sort((a, b) =>
+                  materialSort === "name"
+                    ? a.name.localeCompare(b.name)
+                    : materialSort === "oldest"
+                      ? (a.uploadedAt || "").localeCompare(b.uploadedAt || "")
+                      : (b.uploadedAt || "").localeCompare(a.uploadedAt || ""),
+                );
+              return (
+                <article className="course-material-card" key={course}>
+                  <div className="course-material-title">
+                    <b>{course}</b>
+                    <small>
+                      {courseFiles.length
+                        ? `${courseFiles.length} file${courseFiles.length === 1 ? "" : "s"}`
+                        : "No slide deck uploaded"}
+                    </small>
+                  </div>
+                  <div className="course-material-files">
+                    {visibleFiles.map((file) => (
+                      <div className="course-material-file" key={file.id}>
+                        <span>
+                          <b>{file.name}</b>
+                          <small>{formatSize(file.size)}</small>
+                        </span>
+                        <button
+                          className="secondary"
+                          onClick={() => createStudyTask(course, file)}
+                        >
+                          Study task
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => createReviewPlan(course, file)}
+                        >
+                          Review plan
+                        </button>
+                        <button
+                          className="secondary"
+                          onClick={() => toggleReviewed(course, file)}
+                        >
+                          {file.reviewedAt
+                            ? "Reviewed " + file.reviewedAt.slice(0, 10)
+                            : "Mark reviewed"}
+                        </button>
+                        <a
+                          className="secondary"
+                          href={file.dataUrl}
+                          download={file.name}
+                        >
+                          Download
+                        </a>
+                        <button
+                          className="secondary danger-action"
+                          onClick={() => remove(course, file.id, file.name)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <label className="secondary upload-button course-material-upload">
+                    + Upload PPT
+                    <input
+                      type="file"
+                      accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                      onChange={(event) => {
+                        const selected = event.target.files?.[0];
+                        if (selected) upload(course, selected);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted">
+            Create a course plan first, then its lecture materials will appear
+            here.
+          </p>
+        )}
+      </section>
+      <section className="course-materials course-further-reading">
+        <div className="section-title">
+          <div>
+            <span className="pill purple">FURTHER READING</span>
+            <h3>Documents and reading notes</h3>
+            <span className="muted">
+              Keep optional papers, chapters and supporting documents with
+              notes for each course.
+            </span>
+          </div>
+        </div>
+        {courses.length ? (
+          <div className="course-material-grid">
+            {courses.map((course) => {
+              const readings = furtherReading[course] || [];
+              return (
+                <article className="course-material-card" key={course}>
+                  <div className="course-material-title">
+                    <b>{course}</b>
+                    <small>
+                      {readings.length
+                        ? `${readings.length} reading${readings.length === 1 ? "" : "s"}`
+                        : "No further reading uploaded"}
+                    </small>
+                  </div>
+                  <div className="course-material-files course-reading-files">
+                    {readings.map((file) => (
+                      <div className="course-reading-file" key={file.id}>
+                        <div className="course-material-file">
+                          <span>
+                            <b>{file.name}</b>
+                            <small>{formatSize(file.size)}</small>
+                          </span>
+                          <button
+                            className="secondary"
+                            onClick={() => createStudyTask(course, file)}
+                          >
+                            Study task
+                          </button>
+                          <a
+                            className="secondary"
+                            href={file.dataUrl}
+                            download={file.name}
+                          >
+                            Download
+                          </a>
+                          <button
+                            className="secondary danger-action"
+                            onClick={() =>
+                              removeFurtherReading(course, file.id, file.name)
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        <textarea
+                          value={file.notes}
+                          onChange={(event) =>
+                            updateReadingNotes(
+                              course,
+                              file.id,
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Add notes, key arguments, questions or links for this reading…"
+                          aria-label={`Notes for ${file.name}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <label className="secondary upload-button course-material-upload">
+                    + Upload reading
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt,.md,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                      onChange={(event) => {
+                        const selected = event.target.files?.[0];
+                        if (selected) uploadFurtherReading(course, selected);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted">
+            Create a course first, then add its further reading here.
+          </p>
+        )}
+      </section>
+      <UpcomingCourseTasks
+        toggleTask={toggleTask}
+        onStartTimer={startTaskTimer}
+      />
+    </div>
+  );
 }

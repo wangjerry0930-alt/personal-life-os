@@ -25,6 +25,7 @@ export const loadSnapshot=():RepositorySnapshot=>{
     courseNames:storageAdapter.has('personal-life-os-course-names-v1')?storageAdapter.get('personal-life-os-course-names-v1',snapshot.courseNames||[]):snapshot.courseNames||[],
     courseFiles:storageAdapter.has('personal-life-os-course-files-v1')?storageAdapter.get('personal-life-os-course-files-v1',snapshot.courseFiles||{}):snapshot.courseFiles||{},
     courseNotes:storageAdapter.has('personal-life-os-course-notes-v1')?storageAdapter.get('personal-life-os-course-notes-v1',snapshot.courseNotes||{}):snapshot.courseNotes||{},
+    courseFurtherReading:storageAdapter.has('personal-life-os-course-further-reading-v1')?storageAdapter.get('personal-life-os-course-further-reading-v1',snapshot.courseFurtherReading||{}):snapshot.courseFurtherReading||{},
   };
 };
 export const saveSnapshot=(snapshot:RepositorySnapshot)=>storageAdapter.set(REPOSITORY_KEY,{...snapshot,updatedAt:new Date().toISOString()});
