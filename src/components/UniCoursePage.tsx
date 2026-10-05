@@ -1096,6 +1096,8 @@ export default function UniCoursePage({
                         : "No slide deck uploaded"}
                     </small>
                   </div>
+                  <details className="bulk-collection" open={visibleFiles.length <= 4}>
+                    <summary><span>Material list</span><small>{visibleFiles.length} shown · click to expand or collapse</small></summary>
                   <div className="course-material-files">
                     {visibleFiles.map((file) => (
                       <div className="course-material-file" key={file.id}>
@@ -1139,6 +1141,7 @@ export default function UniCoursePage({
                       </div>
                     ))}
                   </div>
+                  </details>
                   <label className="secondary upload-button course-material-upload">
                     + Upload PPT
                     <input
@@ -1187,6 +1190,8 @@ export default function UniCoursePage({
                         : "No further reading uploaded"}
                     </small>
                   </div>
+                  <details className="bulk-collection" open={readings.length <= 4}>
+                    <summary><span>Reading list</span><small>{readings.length} saved · click to expand or collapse</small></summary>
                   <div className="course-material-files course-reading-files">
                     {readings.map((file) => (
                       <div className="course-reading-file" key={file.id}>
@@ -1253,6 +1258,7 @@ export default function UniCoursePage({
                       </div>
                     ))}
                   </div>
+                  </details>
                   <label className="secondary upload-button course-material-upload">
                     + Upload reading
                     <input
