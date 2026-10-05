@@ -28,7 +28,21 @@ export const loadSnapshot=():RepositorySnapshot=>{
     courseFurtherReading:storageAdapter.has('personal-life-os-course-further-reading-v1')?storageAdapter.get('personal-life-os-course-further-reading-v1',snapshot.courseFurtherReading||{}):snapshot.courseFurtherReading||{},
   };
 };
-export const saveSnapshot=(snapshot:RepositorySnapshot)=>storageAdapter.set(REPOSITORY_KEY,{...snapshot,updatedAt:new Date().toISOString()});
+export const saveSnapshot=(snapshot:RepositorySnapshot)=>{
+  // Course documents already live under their dedicated storage key. Keeping
+  // their base64 payloads in the main repository as well can exceed the
+  // browser's localStorage quota and make the whole app fail to render.
+  if(!storageAdapter.has('personal-life-os-course-files-v1')&&snapshot.courseFiles){
+    storageAdapter.set('personal-life-os-course-files-v1',snapshot.courseFiles);
+  }
+  const compact={
+    ...snapshot,
+    courseFiles:{},
+    courseFurtherReading:{},
+    updatedAt:new Date().toISOString(),
+  };
+  storageAdapter.set(REPOSITORY_KEY,compact);
+};
 export function saveQuestState(questBoard:unknown,questRefreshLedger?:unknown){
   storageAdapter.set('personal-life-os-quest-board-v1',questBoard);
   if(questRefreshLedger!==undefined)storageAdapter.set('personal-life-os-quest-refresh-v1',questRefreshLedger);
