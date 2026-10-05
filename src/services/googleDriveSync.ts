@@ -40,7 +40,7 @@ function multipartBody(metadata:Record<string,unknown>,snapshot:RepositorySnapsh
 }
 
 export async function uploadDriveSnapshot(snapshot:RepositorySnapshot,clientId:string){
-  const token=await accessToken(clientId);const existing=await findSnapshot(token);const metadata={name:FILE_NAME,mimeType:'application/json'};const payload=multipartBody(metadata,snapshot);const url=existing?`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const token=await accessToken(clientId);const existing=await findSnapshot(token);const metadata={name:FILE_NAME,mimeType:'application/json'};const payload=multipartBody(metadata,snapshot);const url=existing?`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart&fields=id,name,modifiedTime,mimeType`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime,mimeType';
   const file=await driveRequest<DriveFile>(token,url,{method:existing?'PATCH':'POST',headers:payload.headers,body:payload.body});
   return{updatedAt:file.modifiedTime};
 }
