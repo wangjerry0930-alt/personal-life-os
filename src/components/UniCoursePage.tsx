@@ -6,6 +6,13 @@ import { localDateKey } from "../domain/date";
 import { addLocalDays } from "../domain/date";
 import { startTaskTimer as beginTaskTimer } from "../services/timeTrackingService";
 import { loadSnapshot, saveSnapshot } from "../repositories/appRepository";
+import {
+  deleteCourseReading,
+  downloadCourseReading,
+  listCourseReadings,
+  saveCourseReading,
+  updateCourseReadingNotes,
+} from "../services/courseReadingStore";
 
 type CourseFile = {
   id: string;
@@ -17,7 +24,15 @@ type CourseFile = {
   uploadedAt?: string;
 };
 type StoredFiles = Record<string, CourseFile[]>;
-type FurtherReadingFile = CourseFile & { notes: string };
+type FurtherReadingFile = {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  notes: string;
+  url?: string;
+};
 type StoredFurtherReading = Record<string, FurtherReadingFile[]>;
 const courseFromNotes = (notes?: string) =>
   notes?.match(/^Course:\s*(.*?)\s*·/)?.[1]?.trim() || "";
@@ -40,19 +55,6 @@ const readFiles = (): StoredFiles => {
           : [{ ...value, id: `course-file-${Date.now()}-${course}` }],
       ]),
     );
-  } catch {
-    return {};
-  }
-};
-
-const readFurtherReading = (): StoredFurtherReading => {
-  try {
-    const stored = localStorage.getItem(
-      "personal-life-os-course-further-reading-v1",
-    );
-    return stored
-      ? JSON.parse(stored)
-      : (loadSnapshot().courseFurtherReading as StoredFurtherReading) || {};
   } catch {
     return {};
   }
@@ -86,8 +88,10 @@ export default function UniCoursePage({
       : allCourses.filter((course) => course === selectedCourse);
   const [courseMessage, setCourseMessage] = useState("");
   const [files, setFiles] = useState<StoredFiles>(readFiles);
-  const [furtherReading, setFurtherReading] =
-    useState<StoredFurtherReading>(readFurtherReading);
+  const [furtherReading, setFurtherReading] = useState<StoredFurtherReading>({});
+  const [readingLinks, setReadingLinks] = useState<
+    Record<string, { name: string; url: string }>
+  >({});
   const [materialFilter, setMaterialFilter] = useState<
     "all" | "todo" | "reviewed"
   >("all");
@@ -109,9 +113,29 @@ export default function UniCoursePage({
       courseNames,
       courseFiles: files,
       courseNotes,
-      courseFurtherReading: furtherReading,
     });
-  }, [courseNames, files, courseNotes, furtherReading]);
+  }, [courseNames, files, courseNotes]);
+  useEffect(() => {
+    listCourseReadings()
+      .then((items) => {
+        const grouped: StoredFurtherReading = {};
+        items.forEach((item) => {
+          (grouped[item.course] ||= []).push({
+            id: item.id,
+            name: item.name,
+            size: item.size,
+            type: item.type,
+            uploadedAt: item.uploadedAt,
+            notes: item.notes,
+            url: item.url,
+          });
+        });
+        setFurtherReading(grouped);
+      })
+      .catch(() =>
+        setCourseMessage("Could not open the local document library."),
+      );
+  }, []);
   const saveFiles = (next: StoredFiles) => {
     try {
       localStorage.setItem(
@@ -124,21 +148,6 @@ export default function UniCoursePage({
     } catch {
       setCourseMessage(
         "Storage is full. Export a course pack, then remove large files before uploading more.",
-      );
-    }
-  };
-  const saveFurtherReading = (next: StoredFurtherReading) => {
-    try {
-      localStorage.setItem(
-        "personal-life-os-course-further-reading-v1",
-        JSON.stringify(next),
-      );
-      saveSnapshot({ ...loadSnapshot(), courseFurtherReading: next });
-      setFurtherReading(next);
-      setCourseMessage("Further reading saved.");
-    } catch {
-      setCourseMessage(
-        "Storage is full. Remove a large document or keep the original in Drive.",
       );
     }
   };
@@ -178,11 +187,7 @@ export default function UniCoursePage({
     reader.onerror = () => setCourseMessage("Could not read that file.");
     reader.readAsDataURL(file);
   };
-  const uploadFurtherReading = (course: string, file: File) => {
-    if (file.size > MAX_COURSE_FILE_BYTES) {
-      setCourseMessage(`${file.name} is larger than 6 MB.`);
-      return;
-    }
+  const uploadFurtherReading = async (course: string, file: File) => {
     if (
       (furtherReading[course] || []).some(
         (item) => item.name.toLowerCase() === file.name.toLowerCase(),
@@ -191,25 +196,24 @@ export default function UniCoursePage({
       setCourseMessage("This reading is already uploaded for this course.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () =>
-      saveFurtherReading({
-        ...furtherReading,
-        [course]: [
-          ...(furtherReading[course] || []),
-          {
-            id: `course-reading-${Date.now()}`,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            dataUrl: String(reader.result),
-            uploadedAt: new Date().toISOString(),
-            notes: "",
-          },
-        ],
-      });
-    reader.onerror = () => setCourseMessage("Could not read that document.");
-    reader.readAsDataURL(file);
+    const item: FurtherReadingFile = {
+      id: `course-reading-${Date.now()}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadedAt: new Date().toISOString(),
+      notes: "",
+    };
+    try {
+      await saveCourseReading({ ...item, course, blob: file });
+      setFurtherReading((current) => ({
+        ...current,
+        [course]: [...(current[course] || []), item],
+      }));
+      setCourseMessage("Further reading saved without using localStorage.");
+    } catch {
+      setCourseMessage("Could not save that document on this device.");
+    }
   };
   const updateReadingNotes = (course: string, fileId: string, notes: string) => {
     const next = {
@@ -219,10 +223,7 @@ export default function UniCoursePage({
       ),
     };
     setFurtherReading(next);
-    localStorage.setItem(
-      "personal-life-os-course-further-reading-v1",
-      JSON.stringify(next),
-    );
+    void updateCourseReadingNotes(fileId, notes);
   };
   const removeFurtherReading = (
     course: string,
@@ -237,7 +238,36 @@ export default function UniCoursePage({
       ),
     };
     if (!next[course].length) delete next[course];
-    saveFurtherReading(next);
+    setFurtherReading(next);
+    void deleteCourseReading(fileId);
+  };
+  const addReadingLink = async (course: string) => {
+    const draft = readingLinks[course] || { name: "", url: "" };
+    const name = draft.name.trim();
+    const url = draft.url.trim();
+    if (!name || !/^https:\/\/(drive|docs)\.google\.com\//i.test(url)) {
+      setCourseMessage("Add a name and a valid Google Drive link.");
+      return;
+    }
+    const item: FurtherReadingFile = {
+      id: `course-reading-link-${Date.now()}`,
+      name,
+      size: 0,
+      type: "text/uri-list",
+      uploadedAt: new Date().toISOString(),
+      notes: "",
+      url,
+    };
+    await saveCourseReading({ ...item, course });
+    setFurtherReading((current) => ({
+      ...current,
+      [course]: [...(current[course] || []), item],
+    }));
+    setReadingLinks((current) => ({
+      ...current,
+      [course]: { name: "", url: "" },
+    }));
+    setCourseMessage("Google Drive reading linked.");
   };
   const formatSize = (bytes: number) =>
     bytes < 1024 * 1024
@@ -253,7 +283,7 @@ export default function UniCoursePage({
     saveFiles(next);
   };
 
-  const createStudyTask = (course: string, file: CourseFile) => {
+  const createStudyTask = (course: string, file: Pick<CourseFile, "name">) => {
     setData((current) => {
       const duplicate = current.tasks.some(
         (task) =>
@@ -526,11 +556,14 @@ export default function UniCoursePage({
     const nextNotes = { ...courseNotes };
     delete nextNotes[course];
     const nextReading = { ...furtherReading };
+    (nextReading[course] || []).forEach((item) =>
+      void deleteCourseReading(item.id),
+    );
     delete nextReading[course];
     setCourseNames(nextNames);
     saveFiles(nextFiles);
     setCourseNotes(nextNotes);
-    saveFurtherReading(nextReading);
+    setFurtherReading(nextReading);
     if (selectedCourse === course) setSelectedCourse("All courses");
     localStorage.setItem(
       "personal-life-os-course-names-v1",
@@ -1160,7 +1193,9 @@ export default function UniCoursePage({
                         <div className="course-material-file">
                           <span>
                             <b>{file.name}</b>
-                            <small>{formatSize(file.size)}</small>
+                            <small>
+                              {file.url ? "Google Drive link" : formatSize(file.size)}
+                            </small>
                           </span>
                           <button
                             className="secondary"
@@ -1168,13 +1203,32 @@ export default function UniCoursePage({
                           >
                             Study task
                           </button>
-                          <a
-                            className="secondary"
-                            href={file.dataUrl}
-                            download={file.name}
-                          >
-                            Download
-                          </a>
+                          {file.url ? (
+                            <a
+                              className="secondary"
+                              href={file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open in Drive
+                            </a>
+                          ) : (
+                            <button
+                              className="secondary"
+                              onClick={() =>
+                                downloadCourseReading(file.id, file.name).catch(
+                                  (error) =>
+                                    setCourseMessage(
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Could not download this reading.",
+                                    ),
+                                )
+                              }
+                            >
+                              Download
+                            </button>
+                          )}
                           <button
                             className="secondary danger-action"
                             onClick={() =>
@@ -1211,6 +1265,40 @@ export default function UniCoursePage({
                       }}
                     />
                   </label>
+                  <div className="course-reading-link-form">
+                    <input
+                      value={readingLinks[course]?.name || ""}
+                      onChange={(event) =>
+                        setReadingLinks((current) => ({
+                          ...current,
+                          [course]: {
+                            name: event.target.value,
+                            url: current[course]?.url || "",
+                          },
+                        }))
+                      }
+                      placeholder="Reading title"
+                    />
+                    <input
+                      value={readingLinks[course]?.url || ""}
+                      onChange={(event) =>
+                        setReadingLinks((current) => ({
+                          ...current,
+                          [course]: {
+                            name: current[course]?.name || "",
+                            url: event.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="Paste Google Drive link"
+                    />
+                    <button
+                      className="secondary"
+                      onClick={() => void addReadingLink(course)}
+                    >
+                      Add Drive link
+                    </button>
+                  </div>
                 </article>
               );
             })}
