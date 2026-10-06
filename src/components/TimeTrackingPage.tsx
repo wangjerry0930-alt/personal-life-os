@@ -574,10 +574,15 @@ export default function TimeTrackingPage({
         Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 1000)
       : active.elapsed
     : 0;
-  const isPomodoro = active?.task?.timerMode === "pomodoro";
+  // An active timer may contain an older task snapshot. Always prefer the
+  // current repository task so timer-mode edits take effect immediately.
+  const activeTask = active?.task
+    ? tasks.find((task) => task.id === active.task?.id) || active.task
+    : undefined;
+  const isPomodoro = activeTask?.timerMode === "pomodoro";
   const pomodoro = getPomodoroState(elapsed);
-  const targetSeconds = active?.task
-    ? Math.max(1, remainingTaskMinutes(active.task) * 60)
+  const targetSeconds = activeTask
+    ? Math.max(1, remainingTaskMinutes(activeTask) * 60)
     : 3600;
   const timerProgress = active
     ? isPomodoro
@@ -650,14 +655,14 @@ export default function TimeTrackingPage({
     const end = new Date().toISOString();
     const focusedSeconds = isPomodoro ? pomodoro.focusedSeconds : elapsed;
     const rawMinutes = Math.max(1, Math.round(focusedSeconds / 60));
-    const minutes = active.task && !isPomodoro
-      ? capTaskSessionMinutes(active.task, rawMinutes)
+    const minutes = activeTask && !isPomodoro
+      ? capTaskSessionMinutes(activeTask, rawMinutes)
       : rawMinutes;
     if (minutes > 0)
       saveTrackedTimeEntry(
-        active.task
+        activeTask
           ? createTaskTimeEntry(
-              active.task,
+              activeTask,
               new Date(
                 new Date(end).getTime() -
                   Math.min(focusedSeconds, minutes * 60) * 1000,
@@ -680,22 +685,22 @@ export default function TimeTrackingPage({
               projectId || undefined,
             ),
       );
-    const trackedAfter = active.task
-      ? (active.task.trackedMinutes || 0) + minutes
+    const trackedAfter = activeTask
+      ? (activeTask.trackedMinutes || 0) + minutes
       : minutes;
     const reachedTarget = Boolean(
-      active.task && !isPomodoro && taskTargetReached(active.task, minutes),
+      activeTask && !isPomodoro && taskTargetReached(activeTask, minutes),
     );
-    if (active.task && active.task.status !== "done" && reachedTarget)
-      toggleTask(active.task.id);
+    if (activeTask && activeTask.status !== "done" && reachedTarget)
+      toggleTask(activeTask.id);
     setActive(null);
     setMessage(
-      active.task
+      activeTask
         ? isPomodoro
           ? `Saved ${minutes} focused minutes. The task remains open.`
           : reachedTarget
           ? `Saved ${minutes} minutes. Target reached and task completed.`
-          : `Saved ${minutes} minutes. ${Math.max(0, active.task.minutes - trackedAfter)} minutes remaining.`
+          : `Saved ${minutes} minutes. ${Math.max(0, activeTask.minutes - trackedAfter)} minutes remaining.`
         : `Saved ${minutes} minutes to ${active.category}.`,
     );
     setNotes("");
@@ -706,9 +711,9 @@ export default function TimeTrackingPage({
   };
   useEffect(() => {
     if (
-      active?.task &&
-      active.task.timerMode !== "pomodoro" &&
-      active.running &&
+      activeTask &&
+      activeTask.timerMode !== "pomodoro" &&
+      active?.running &&
       elapsed >= targetSeconds
     )
       stop();
