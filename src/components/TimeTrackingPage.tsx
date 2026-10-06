@@ -20,6 +20,8 @@ import {
 } from "../services/timeTrackingService";
 import { localDateKey } from "../domain/date";
 import { getGamingAllowance, getRewardState } from "../services/rewardService";
+import { getPomodoroState } from "../services/pomodoroTimer";
+import { playCompletionSound } from "../services/completionSoundService";
 import { useAppStore } from "../store/useAppStore";
 type Subtype =
   | "Gaming"
@@ -506,6 +508,7 @@ export default function TimeTrackingPage({
 }) {
   const { toggleTask } = useAppStore();
   const savingRef = useRef(false);
+  const pomodoroPhaseRef = useRef("");
   const today = localDateKey();
   const [active, setActive] = useState<Active | null>(read);
   const [title, setTitle] = useState(() => {
@@ -571,12 +574,46 @@ export default function TimeTrackingPage({
         Math.floor((Date.now() - new Date(active.startedAt).getTime()) / 1000)
       : active.elapsed
     : 0;
+  const isPomodoro = active?.task?.timerMode === "pomodoro";
+  const pomodoro = getPomodoroState(elapsed);
   const targetSeconds = active?.task
     ? Math.max(1, remainingTaskMinutes(active.task) * 60)
     : 3600;
   const timerProgress = active
-    ? Math.min(100, (elapsed / targetSeconds) * 100)
+    ? isPomodoro
+      ? pomodoro.progressPercent
+      : Math.min(100, (elapsed / targetSeconds) * 100)
     : 0;
+  useEffect(() => {
+    if (!isPomodoro || !active?.running) {
+      pomodoroPhaseRef.current = "";
+      return;
+    }
+    const phase = `${pomodoro.round}-${pomodoro.isFocus ? "focus" : "break"}`;
+    if (!pomodoroPhaseRef.current) {
+      pomodoroPhaseRef.current = phase;
+      return;
+    }
+    if (pomodoroPhaseRef.current === phase) return;
+    pomodoroPhaseRef.current = phase;
+    playCompletionSound(pomodoro.isFocus ? "focus" : "break");
+    if ("Notification" in window && Notification.permission === "granted")
+      new Notification(
+        pomodoro.isFocus ? "Focus time started" : "Break time started",
+        {
+          body: pomodoro.isFocus
+            ? `${active.title} · round ${pomodoro.round}`
+            : "Take 5 minutes. The next focus round starts automatically.",
+          tag: "time-tracking-pomodoro",
+        },
+      );
+  }, [
+    active?.running,
+    active?.title,
+    isPomodoro,
+    pomodoro.isFocus,
+    pomodoro.round,
+  ]);
   const start = (task?: Task) => {
     const taskCategory = task ? inferTaskTimeCategory(task) : category;
     const gaming =
@@ -587,6 +624,12 @@ export default function TimeTrackingPage({
       );
       return;
     }
+    if (
+      task?.timerMode === "pomodoro" &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    )
+      void Notification.requestPermission();
     setActive({
       title: task?.title || title.trim(),
       category: taskCategory,
@@ -605,8 +648,9 @@ export default function TimeTrackingPage({
     if (!active || savingRef.current) return;
     savingRef.current = true;
     const end = new Date().toISOString();
-    const rawMinutes = Math.max(1, Math.round(elapsed / 60));
-    const minutes = active.task
+    const focusedSeconds = isPomodoro ? pomodoro.focusedSeconds : elapsed;
+    const rawMinutes = Math.max(1, Math.round(focusedSeconds / 60));
+    const minutes = active.task && !isPomodoro
       ? capTaskSessionMinutes(active.task, rawMinutes)
       : rawMinutes;
     if (minutes > 0)
@@ -616,12 +660,14 @@ export default function TimeTrackingPage({
               active.task,
               new Date(
                 new Date(end).getTime() -
-                  Math.min(elapsed, minutes * 60) * 1000,
+                  Math.min(focusedSeconds, minutes * 60) * 1000,
               ).toISOString(),
               end,
               minutes,
               "Study",
-              `${active.title} session`,
+              isPomodoro
+                ? `${active.title} Pomodoro focus · breaks excluded`
+                : `${active.title} session`,
             )
           : createManualTimeEntry(
               active.title,
@@ -638,14 +684,16 @@ export default function TimeTrackingPage({
       ? (active.task.trackedMinutes || 0) + minutes
       : minutes;
     const reachedTarget = Boolean(
-      active.task && taskTargetReached(active.task, minutes),
+      active.task && !isPomodoro && taskTargetReached(active.task, minutes),
     );
     if (active.task && active.task.status !== "done" && reachedTarget)
       toggleTask(active.task.id);
     setActive(null);
     setMessage(
       active.task
-        ? reachedTarget
+        ? isPomodoro
+          ? `Saved ${minutes} focused minutes. The task remains open.`
+          : reachedTarget
           ? `Saved ${minutes} minutes. Target reached and task completed.`
           : `Saved ${minutes} minutes. ${Math.max(0, active.task.minutes - trackedAfter)} minutes remaining.`
         : `Saved ${minutes} minutes to ${active.category}.`,
@@ -657,7 +705,13 @@ export default function TimeTrackingPage({
     }, 300);
   };
   useEffect(() => {
-    if (active?.task && active.running && elapsed >= targetSeconds) stop();
+    if (
+      active?.task &&
+      active.task.timerMode !== "pomodoro" &&
+      active.running &&
+      elapsed >= targetSeconds
+    )
+      stop();
   }, [tick]);
   const remove = (entry: TimeEntry) => {
     if (!window.confirm(`Delete “${entry.title}” from time history?`)) return;
@@ -720,14 +774,19 @@ export default function TimeTrackingPage({
       {active ? (
         <section className="time-active">
           <div>
-            <small>NOW TRACKING · {active.category}</small>
+            <small>
+              NOW TRACKING · {active.category}
+              {isPomodoro ? " · POMODORO" : ""}
+            </small>
             <h3>{active.title}</h3>
-            <b>{fmt(elapsed)}</b>
+            <b>{fmt(isPomodoro ? pomodoro.remainingSeconds : elapsed)}</b>
             <div className="timer-progress">
               <i style={{ width: `${timerProgress}%` }} />
             </div>
             <small>
-              {active.task
+              {isPomodoro
+                ? `${pomodoro.isFocus ? "Focus" : "Break"} · round ${pomodoro.round} · ${Math.round(pomodoro.focusedSeconds / 60)} focused min · repeats until you stop`
+                : active.task
                 ? `${Math.round(timerProgress)}% of ${active.task.minutes} min goal`
                 : "Manual session · 60 min visual target"}
             </small>
