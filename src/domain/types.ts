@@ -1,4 +1,7 @@
 export type Level='Beginner'|'Basic'|'Intermediate'|'Advanced'|'Expert';export type Priority='Low'|'Medium'|'High';export type TaskStatus='todo'|'done';
+export type RoutineBlockKind='hard'|'deep'|'focus'|'light'|'admin'|'exercise'|'meal'|'recovery';
+export interface WeeklyRoutineBlock{id:string;day:number;start:string;end:string;title:string;kind:RoutineBlockKind;projectMatch?:string[];movable:boolean;optional?:boolean;note?:string}
+export interface WeeklyRoutine{sleepStart:string;sleepEnd:string;breakfastMinutes:number;principles:string[];blocks:WeeklyRoutineBlock[]}
 export interface LearningArea{id:string;name:string;description:string;priority:Priority;status:'Active'|'Paused';progress:number;focus:string;topics:string[];color:string;longTermGoal?:string;resources?:string[];notes?:string}
 export interface Skill{id:string;name:string;level:Level;target:Level;practiceCount:number;minutes:number;lastPracticed:string;focus:string;areaId?:string;progress:number;resources?:string[];milestones?:string[];progressLog?:Array<{date:string;minutes:number;note:string}>}
 export interface Task{id:string;title:string;description:string;minutes:number;trackedMinutes?:number;timerMode?:'countdown'|'pomodoro';timeCategory?:string;entertainmentSubtype?:TimeEntry['entertainmentSubtype'];difficulty:'Easy'|'Medium'|'Hard';category:'Daily progress'|'Habit'|'Manual';source?:'manual'|'quest'|'habit'|'knowledge';scheduledDate?:string;scheduledStartTime?:string;scheduledEndTime?:string;questId?:string;habitId?:string;areaId?:string;skillId?:string;projectId?:string;bookId?:string;conceptId?:string;goalId?:string;priority?:Priority;notes?:string;status:TaskStatus;completedAt?:string}
@@ -12,7 +15,7 @@ export type ResourceType='Paper'|'Book'|'Video'|'Course'|'Website'|'Dataset'|'To
 export type ResourceStatus='Inbox'|'To Read'|'Reading'|'Finished'|'Reference';
 export interface ResourceItem{id:string;title:string;type:ResourceType;status:ResourceStatus;url:string;notes:string;tags:string[];areaId?:string;skillId?:string;projectId?:string;fileName?:string;fileType?:string;fileSize?:number;fileDataUrl?:string;createdAt:string}
 import type { Interest } from './interests';
-export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog;interests:Interest[];hydration?:HydrationState}
+export interface AppData{areas:LearningArea[];skills:Skill[];tasks:Task[];habits:Habit[];activities:Activity[];knowledge:KnowledgeItem[];projects:Project[];goals:Goal[];log:DailyLog;interests:Interest[];hydration?:HydrationState;weeklyRoutine?:WeeklyRoutine}
 export interface BaseEntity{id:string;createdAt:string;updatedAt:string;deletedAt?:string}
 export type ActivityType='TaskCompleted'|'SkillPractice'|'HabitCompleted'|'LearningSession'|'BookUploaded'|'BookLearning'|'ConceptLearned'|'RecallCompleted'|'BookTaskCompleted'|'PaperRead'|'Interaction'|'Conversation'|'Meeting'|'ProjectWork'|'KnowledgeRead'|'JournalEntry'|'Custom';
 export interface ActivityEntity extends BaseEntity{id:string;type:ActivityType;title:string;description?:string;occurredAt:string;durationMinutes?:number;source?:string;metadata?:Record<string,unknown>;relations?:EntityRelation[]}

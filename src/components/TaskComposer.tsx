@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Icon from './Icon';
 import { useAppStore } from '../store/useAppStore';
 import { localDateKey } from '../domain/date';
 import { startExclusiveTaskTimer } from '../services/taskTimerPersistence';
+import { DEFAULT_WEEKLY_ROUTINE, recommendRoutineSlot, routineTaskEnd } from '../domain/weeklyRoutine';
 
 const categories = ['Study', 'Work', 'Music', 'Entertainment', 'Exercise', 'Life', 'Other'];
 
@@ -12,12 +13,15 @@ export default function TaskComposer() {
   const [title, setTitle] = useState('');
   const [minutes, setMinutes] = useState('20');
   const [scheduledDate, setScheduledDate] = useState(localDateKey());
+  const [scheduledStartTime,setScheduledStartTime]=useState('');
+  const [scheduledEndTime,setScheduledEndTime]=useState('');
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
   const [priority, setPriority] = useState('Medium');
   const [projectId, setProjectId] = useState('');
   const [timeCategory, setTimeCategory] = useState('Study');
   const [notes, setNotes] = useState('');
   const [timerMode, setTimerMode] = useState<'countdown' | 'pomodoro'>('countdown');
+  const suggestion=useMemo(()=>title.trim()?recommendRoutineSlot({title,description:notes,minutes:Number(minutes)||20,timeCategory},data.projects.find(project=>project.id===projectId),data.weeklyRoutine||DEFAULT_WEEKLY_ROUTINE):null,[title,notes,minutes,timeCategory,projectId,data.projects,data.weeklyRoutine]);
 
   const close = () => setOpen(false);
   const add = (startNow = false) => {
@@ -32,6 +36,8 @@ export default function TaskComposer() {
       priority: priority as any,
       projectId: projectId || undefined,
       scheduledDate: scheduledDate || undefined,
+      scheduledStartTime:scheduledStartTime||undefined,
+      scheduledEndTime:scheduledEndTime||undefined,
       timeCategory: timeCategory === 'Study' ? undefined : timeCategory,
       notes,
       category: 'Manual' as const,
@@ -42,7 +48,7 @@ export default function TaskComposer() {
       ...current,
       tasks: [task, ...current.tasks],
     }));
-    setTitle(''); setNotes(''); setTimeCategory('Study'); setProjectId(''); setScheduledDate(localDateKey()); setTimerMode('countdown'); close();
+    setTitle(''); setNotes(''); setTimeCategory('Study'); setProjectId(''); setScheduledDate(localDateKey());setScheduledStartTime('');setScheduledEndTime(''); setTimerMode('countdown'); close();
   };
 
   return <>
@@ -60,6 +66,7 @@ export default function TaskComposer() {
         </div>
         <label>Time category<select value={timeCategory} onChange={event => setTimeCategory(event.target.value)}>{categories.map(category => <option key={category}>{category}</option>)}</select></label>
         <label>Project<select value={projectId} onChange={event => setProjectId(event.target.value)}><option value="">No project</option>{(data.projects || []).map(project => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
+        {suggestion&&<div className="task-allocation-suggestion"><span><b>{suggestion.block.title}</b><small>{suggestion.reason} · {suggestion.date} {suggestion.block.start}–{routineTaskEnd(suggestion.block,Number(minutes)||20)}</small></span><button type="button" className="secondary" onClick={()=>{setScheduledDate(suggestion.date);setScheduledStartTime(suggestion.block.start);setScheduledEndTime(routineTaskEnd(suggestion.block,Number(minutes)||20))}}>Use routine block</button></div>}
         <label>Notes<textarea rows={2} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional task notes" /></label>
         <p className="task-create-hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> creates and starts immediately</p><div className="modal-actions task-create-actions"><button type="button" className="secondary" onClick={close}>Cancel</button><button type="submit" className="secondary" disabled={!title.trim()}>Create only</button><button type="button" className="primary" disabled={!title.trim()} onClick={()=>add(true)}><Icon name="Play" size={14}/> Create & start</button></div>
       </form>
