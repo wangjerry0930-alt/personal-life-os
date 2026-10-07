@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Activity, ActivityEntity, AppData, HabitLog, LearningArea, Project, Skill, SkillLog, Task, TaskCompletion } from '../domain/types';
 import { loadSnapshot, saveQuestState, saveSnapshot } from '../repositories/appRepository';
+import { storageAdapter } from '../repositories/storageAdapter';
 import type { RepositorySnapshot } from '../domain/types';
 import { calculateHabitBestStreak, calculateHabitStreak, upsertHabitLog } from '../services/habitService';
 import { bootstrapUserProfile } from '../services/profileBootstrapService';
@@ -26,7 +27,7 @@ const commitEvent=(next:AppData,event:ActivityEntity)=>{next.activities=[legacyA
 export function setAppData(updater:Updater){saveData(typeof updater==='function'?updater(currentData):updater)}
 export function getAppData(){return currentData}
 export function getAppSnapshot(){return {...loadSnapshot(),data:currentData}}
-export function restoreAppSnapshot(snapshot:RepositorySnapshot){if(!snapshot?.data||!Array.isArray(snapshot.data.tasks)||!Array.isArray(snapshot.data.areas)||!Array.isArray(snapshot.data.skills))throw new Error('This cloud backup is not a valid Life OS snapshot.');repository={...snapshot,schemaVersion:6,updatedAt:now()};currentData=repository.data;if(snapshot.questBoard!==undefined)saveQuestState(snapshot.questBoard,snapshot.questRefreshLedger);saveSnapshot(repository);if(typeof window!=='undefined')window.dispatchEvent(new Event('life-os-repository-changed'));notify()}
+export function restoreAppSnapshot(snapshot:RepositorySnapshot){if(!snapshot?.data||!Array.isArray(snapshot.data.tasks)||!Array.isArray(snapshot.data.areas)||!Array.isArray(snapshot.data.skills))throw new Error('This cloud backup is not a valid Life OS snapshot.');repository={...snapshot,schemaVersion:6,updatedAt:now()};currentData=repository.data;if(snapshot.questBoard!==undefined)saveQuestState(snapshot.questBoard,snapshot.questRefreshLedger);saveSnapshot(repository);storageAdapter.set('personal-life-os-time-entries',repository.timeEntries||[]);if(typeof window!=='undefined')window.dispatchEvent(new Event('life-os-repository-changed'));notify()}
 export function subscribeAppStore(listener:()=>void){listeners.add(listener);return()=>listeners.delete(listener)}
 
 export function useAppStore(){
