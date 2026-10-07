@@ -3,6 +3,7 @@ import { localDateKey } from '../domain/date';
 import { upsertHabitLog } from '../services/habitService';
 import { migrateLegacyData, REPOSITORY_KEY } from './migration';
 import { storageAdapter } from './storageAdapter';
+import { exportCalendarSubscription } from '../services/calendarSubscriptionService';
 
 const liveArray=<T,>(key:string,fallback:T[]):T[]=>storageAdapter.has(key)?storageAdapter.get<T[]>(key,fallback):fallback;
 export const loadSnapshot=():RepositorySnapshot=>{
@@ -21,6 +22,7 @@ export const loadSnapshot=():RepositorySnapshot=>{
     questRefreshLedger:storageAdapter.has('personal-life-os-quest-refresh-v1')?storageAdapter.get('personal-life-os-quest-refresh-v1',snapshot.questRefreshLedger):snapshot.questRefreshLedger,
     food:storageAdapter.has('personal-life-os-food-v1')?storageAdapter.get('personal-life-os-food-v1',snapshot.food):snapshot.food,
     timeEntries:liveArray('personal-life-os-time-entries',snapshot.timeEntries||[]),
+    calendarSubscription:exportCalendarSubscription(),
     rewards:snapshot.rewards,
     courseNames:storageAdapter.has('personal-life-os-course-names-v1')?storageAdapter.get('personal-life-os-course-names-v1',snapshot.courseNames||[]):snapshot.courseNames||[],
     courseFiles:storageAdapter.has('personal-life-os-course-files-v1')?storageAdapter.get('personal-life-os-course-files-v1',snapshot.courseFiles||{}):snapshot.courseFiles||{},
@@ -28,6 +30,14 @@ export const loadSnapshot=():RepositorySnapshot=>{
     courseFurtherReading:storageAdapter.has('personal-life-os-course-further-reading-v1')?storageAdapter.get('personal-life-os-course-further-reading-v1',snapshot.courseFurtherReading||{}):snapshot.courseFurtherReading||{},
   };
 };
+export function persistRepositoryCollections(snapshot:RepositorySnapshot){
+  const arrays:[string,unknown[]|undefined][]=[['personal-life-os-people',snapshot.people as unknown[]|undefined],['personal-life-os-person-facts',snapshot.personFacts as unknown[]|undefined],['personal-life-os-conversations',snapshot.interactions as unknown[]|undefined],['personal-life-os-important-dates',snapshot.importantDates as unknown[]|undefined],['personal-life-os-books',snapshot.books as unknown[]|undefined],['personal-life-os-captures',snapshot.captures as unknown[]|undefined],['personal-life-os-resources',snapshot.resources as unknown[]|undefined],['personal-life-os-knowledge',snapshot.knowledgeItems as unknown[]|undefined],['personal-life-os-journal-history',snapshot.journalEntries as unknown[]|undefined],['personal-life-os-time-entries',snapshot.timeEntries],['personal-life-os-course-names-v1',snapshot.courseNames],['personal-life-os-course-notes-v1',snapshot.courseNotes as unknown[]|undefined],['personal-life-os-course-further-reading-v1',snapshot.courseFurtherReading as unknown[]|undefined]];
+  for(const [key,value] of arrays)if(value!==undefined)storageAdapter.set(key,value);
+  if(snapshot.questBoard!==undefined)storageAdapter.set('personal-life-os-quest-board-v1',snapshot.questBoard);
+  if(snapshot.questRefreshLedger!==undefined)storageAdapter.set('personal-life-os-quest-refresh-v1',snapshot.questRefreshLedger);
+  if(snapshot.food!==undefined)storageAdapter.set('personal-life-os-food-v1',snapshot.food);
+  if(snapshot.courseFiles!==undefined)storageAdapter.set('personal-life-os-course-files-v1',snapshot.courseFiles);
+}
 export const saveSnapshot=(snapshot:RepositorySnapshot)=>{
   // Course documents already live under their dedicated storage key. Keeping
   // their base64 payloads in the main repository as well can exceed the
