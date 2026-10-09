@@ -20,8 +20,8 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
     block('tue-anika',2,'13:00','16:00','Anika · Metacognition experiment','focus',true,{projectMatch:['Anika','Metacognition'],note:'Two participants; use downtime only for light reading, references or email'}),block('tue-dinner',2,'17:00','18:00','Dinner','meal'),block('tue-recovery',2,'18:00','23:30','Free / social / recovery','recovery'),
     block('wed-cardio',3,'07:00','08:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('wed-commute',3,'10:45','11:00','Walk to class','hard'),block('wed-class',3,'11:00','13:00','Course','hard'),
     block('wed-lunch',3,'13:15','14:45','Lunch + optional nap','meal'),block('wed-committee',3,'16:00','17:00','Musical Theatre Society Committee','hard'),block('wed-dinner',3,'17:00','18:00','Dinner','meal'),block('wed-society',3,'18:00','22:00','Society','hard'),
-    block('thu-strength',4,'07:00','08:30','Strength training','exercise',true,{note:'Allow 20 min shower afterwards'}),block('thu-semantic',4,'09:00','12:00','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),
-    block('thu-lunch',4,'12:00','13:30','Lunch + optional nap','meal'),block('thu-maze',4,'14:00','17:00','Zhou Xiaoyu · Maze Reconstruction','deep',true,{projectMatch:['Zhou Xiaoyu','Maze','Reconstruction']}),block('thu-grocery',4,'17:10','18:10','Groceries','admin',true),block('thu-dinner',4,'18:10','19:10','Dinner','meal'),block('thu-recovery',4,'19:10','23:30','Free / social / recovery','recovery'),
+    block('thu-strength',4,'07:00','08:30','Strength training','exercise',true,{note:'Allow 20 min shower afterwards'}),block('thu-grocery',4,'09:00','10:00','Groceries','admin',true,{note:'Supermarket is about 7 min away'}),block('thu-semantic',4,'10:00','12:00','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),
+    block('thu-lunch',4,'12:00','13:30','Lunch + optional nap','meal'),block('thu-maze',4,'14:00','16:30','Zhou Xiaoyu · Maze Reconstruction','deep',true,{projectMatch:['Zhou Xiaoyu','Maze','Reconstruction']}),block('thu-choir',4,'17:00','19:00','MT Choir Rehearsal','hard'),block('thu-dinner',4,'19:00','20:00','Dinner','meal'),block('thu-recovery',4,'20:00','23:30','Free / social / recovery','recovery'),
     block('fri-cardio',5,'07:00','08:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('fri-commute',5,'09:45','10:00','Walk to class','hard'),block('fri-class',5,'10:00','13:00','Course','hard'),block('fri-lunch',5,'13:00','14:00','Lunch','meal'),
     block('fri-anika',5,'15:00','18:00','Anika · Metacognition experiment','focus',true,{projectMatch:['Anika','Metacognition'],note:'Participant-dependent; light reading/email during downtime'}),block('fri-dinner',5,'18:00','19:00','Dinner','meal'),block('fri-society',5,'19:00','21:00','Society','hard'),
     block('sat-cardio',6,'08:00','09:15','Cardio · optional if society activity appears','exercise',true,{optional:true,note:'Saturday morning stays flexible; allow 20 min shower'}),block('sat-lunch',6,'12:00','13:30','Lunch + optional nap','meal'),block('sat-semantic',6,'14:00','17:00','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),block('sat-dinner',6,'17:30','18:30','Dinner','meal'),block('sat-recovery',6,'18:30','23:30','Light evening / recovery','recovery'),
@@ -29,6 +29,15 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
     block('sun-lunch',0,'13:00','14:30','Lunch + optional nap','meal'),block('sun-patrick',0,'15:00','17:00','Patrick · NEUR0002 literature review','focus',true,{projectMatch:['NEUR0002','Patrick','Agency']}),block('sun-maintenance',0,'17:00','17:30','Tal + Denis · project maintenance','light',true,{projectMatch:['Tal','Denis','Boredom']}),block('sun-dinner',0,'18:00','19:00','Dinner','meal'),block('sun-review',0,'19:30','20:00','Weekly Review / Planning','admin',true),block('sun-recovery',0,'20:00','23:30','Free / recovery','recovery'),
   ]
 };
+
+export const WEEKLY_ROUTINE_VERSION=2;
+const THURSDAY_UPDATES=new Map(DEFAULT_WEEKLY_ROUTINE.blocks.filter(item=>item.day===4).map(item=>[item.id,item]));
+export function migrateThursdayRoutine(routine:WeeklyRoutine):WeeklyRoutine{
+  const existing=new Map(routine.blocks.map(item=>[item.id,item]));
+  const blocks=routine.blocks.map(item=>THURSDAY_UPDATES.has(item.id)?{...item,...THURSDAY_UPDATES.get(item.id)!}:item);
+  for(const [id,item] of THURSDAY_UPDATES)if(!existing.has(id))blocks.push(item);
+  return{...routine,blocks};
+}
 
 const minutes=(value:string)=>{const[h,m]=value.split(':').map(Number);return h*60+m};
 const addDays=(date:Date,amount:number)=>{const next=new Date(date);next.setDate(next.getDate()+amount);return next};
