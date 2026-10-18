@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WeeklyRoutine } from "../src/domain/types";
-import { migrateThursdayRoutine } from "../src/domain/weeklyRoutine";
+import { migrateWeeklyRoutine } from "../src/domain/weeklyRoutine";
 
 const previousRoutine: WeeklyRoutine = {
   sleepStart: "00:00",
@@ -10,19 +10,29 @@ const previousRoutine: WeeklyRoutine = {
   blocks: [
     { id: "thu-semantic", day: 4, start: "09:00", end: "12:00", title: "Semantic", kind: "deep", movable: true },
     { id: "thu-grocery", day: 4, start: "17:10", end: "18:10", title: "Groceries", kind: "admin", movable: true },
+    { id: "thu-maze", day: 4, start: "14:00", end: "16:30", title: "Maze", kind: "deep", movable: true },
+    { id: "sun-maintenance", day: 0, start: "17:00", end: "17:30", title: "Tal maintenance", kind: "light", movable: true },
     { id: "fri-custom", day: 5, start: "09:00", end: "10:00", title: "Keep me", kind: "focus", movable: true },
   ],
 };
 
-describe("Thursday routine migration", () => {
+describe("weekly routine migration", () => {
   it("moves groceries to the morning and adds choir", () => {
-    const migrated = migrateThursdayRoutine(previousRoutine);
+    const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.find((item) => item.id === "thu-grocery")).toMatchObject({ start: "09:00", end: "10:00" });
     expect(migrated.blocks.find((item) => item.id === "thu-choir")).toMatchObject({ start: "17:00", end: "19:00", title: "MT Choir Rehearsal", movable: false });
   });
 
+  it("keeps each research day focused on one project", () => {
+    const migrated = migrateWeeklyRoutine(previousRoutine);
+    expect(migrated.blocks.find((item) => item.id === "wed-maze")).toMatchObject({ day: 3, start: "08:45", end: "10:30" });
+    expect(migrated.blocks.find((item) => item.id === "thu-semantic-pm")?.title).toContain("Semantic Decoding");
+    expect(migrated.blocks.some((item) => item.id === "thu-maze")).toBe(false);
+    expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
+  });
+
   it("keeps unrelated custom blocks", () => {
-    const migrated = migrateThursdayRoutine(previousRoutine);
+    const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.find((item) => item.id === "fri-custom")?.title).toBe("Keep me");
   });
 });
