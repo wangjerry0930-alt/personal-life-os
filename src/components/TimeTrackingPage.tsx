@@ -22,6 +22,7 @@ import { localDateKey } from "../domain/date";
 import { getGamingAllowance, getRewardState } from "../services/rewardService";
 import { getPomodoroState } from "../services/pomodoroTimer";
 import { playCompletionSound } from "../services/completionSoundService";
+import DailyShareCard from "./DailyShareCard";
 import { useAppStore } from "../store/useAppStore";
 type Subtype =
   | "Gaming"
@@ -776,6 +777,7 @@ export default function TimeTrackingPage({
           </p>
         </div>
       </div>
+      <DailyShareCard date={today} />
       {active ? (
         <section className="time-active">
           <div>
