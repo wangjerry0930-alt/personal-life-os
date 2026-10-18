@@ -10,6 +10,7 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
     'Deep technical work needs an uninterrupted 2–3 hour block; reading and writing need 1–2 hours.',
     'Light reading, references and email belong in fragmented time or experiment downtime.',
     'Keep research days project-specific: one main project per day to reduce context switching.',
+    'Anika experiment blocks are the exception: participant downtime can hold interruptible light work from another project, but not deep technical work.',
     'Soft research blocks may move for deadlines, participants or meetings; recovery must not be consumed just because time is empty.',
   ],
   blocks:[
@@ -18,21 +19,21 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
     block('mon-lunch',1,'12:00','13:30','Lunch + optional nap','meal'),block('mon-commute',1,'13:45','14:00','Walk to class','hard'),block('mon-class',1,'14:00','16:00','Course','hard'),
     block('mon-grocery',1,'16:00','17:00','Groceries · next 2–3 days','admin',true,{note:'Supermarket is about 7 min away'}),block('mon-dinner',1,'17:00','18:00','Dinner','meal'),block('mon-society',1,'18:00','22:00','Society','hard'),
     block('tue-commute',2,'08:45','09:00','Walk to class','hard'),block('tue-class',2,'09:00','11:00','Course','hard'),block('tue-lunch',2,'11:30','12:45','Lunch + optional nap','meal'),
-    block('tue-anika',2,'13:00','16:00','Anika · Metacognition experiment','focus',true,{projectMatch:['Anika','Metacognition'],note:'Two participants; use downtime only for light reading, references or email'}),block('tue-dinner',2,'17:00','18:00','Dinner','meal'),block('tue-recovery',2,'18:00','23:30','Free / social / recovery','recovery'),
+    block('tue-anika',2,'13:00','16:00','Anika experiment · flexible project work','focus',true,{projectMatch:['Anika','Metacognition'],note:'Two 90-minute participants: about 30 min guidance + 60 min flexible work each. Use roughly 2 hours total for interruptible reading, references, light analysis, email or follow-up from another project; no deep coding.'}),block('tue-dinner',2,'17:00','18:00','Dinner','meal'),block('tue-recovery',2,'18:00','23:30','Free / social / recovery','recovery'),
     block('wed-cardio',3,'07:00','08:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('wed-maze',3,'08:45','10:30','Zhou Xiaoyu · Maze Reconstruction','deep',true,{projectMatch:['Zhou Xiaoyu','Maze','Reconstruction']}),block('wed-commute',3,'10:45','11:00','Walk to class','hard'),block('wed-class',3,'11:00','13:00','Course','hard'),
     block('wed-lunch',3,'13:15','14:45','Lunch + optional nap','meal'),block('wed-committee',3,'16:00','17:00','Musical Theatre Society Committee','hard'),block('wed-dinner',3,'17:00','18:00','Dinner','meal'),block('wed-society',3,'18:00','22:00','Society','hard'),
     block('thu-strength',4,'07:00','08:30','Strength training','exercise',true,{note:'Allow 20 min shower afterwards'}),block('thu-grocery',4,'09:00','10:00','Groceries','admin',true,{note:'Supermarket is about 7 min away'}),block('thu-semantic',4,'10:00','12:00','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),
     block('thu-lunch',4,'12:00','13:30','Lunch + optional nap','meal'),block('thu-semantic-pm',4,'14:00','16:30','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),block('thu-choir',4,'17:00','19:00','MT Choir Rehearsal','hard'),block('thu-dinner',4,'19:00','20:00','Dinner','meal'),block('thu-recovery',4,'20:00','23:30','Free / social / recovery','recovery'),
     block('fri-cardio',5,'07:00','08:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('fri-commute',5,'09:45','10:00','Walk to class','hard'),block('fri-class',5,'10:00','13:00','Course','hard'),block('fri-lunch',5,'13:00','14:00','Lunch','meal'),
-    block('fri-anika',5,'15:00','18:00','Anika · Metacognition experiment','focus',true,{projectMatch:['Anika','Metacognition'],note:'Participant-dependent; light reading/email during downtime'}),block('fri-dinner',5,'18:00','19:00','Dinner','meal'),block('fri-society',5,'19:00','21:00','Society','hard'),
+    block('fri-anika',5,'15:00','18:00','Anika experiment · flexible project work','focus',true,{projectMatch:['Anika','Metacognition'],note:'Two 90-minute participants: about 30 min guidance + 60 min flexible work each. Use roughly 2 hours total for interruptible reading, references, light analysis, email or follow-up from another project; no deep coding.'}),block('fri-dinner',5,'18:00','19:00','Dinner','meal'),block('fri-society',5,'19:00','21:00','Society','hard'),
     block('sat-cardio',6,'08:00','09:15','Cardio · optional if society activity appears','exercise',true,{optional:true,note:'Saturday morning stays flexible; allow 20 min shower'}),block('sat-lunch',6,'12:00','13:30','Lunch + optional nap','meal'),block('sat-semantic',6,'14:00','17:00','Wang Haiteng · Semantic Decoding','deep',true,{projectMatch:['Wang Haiteng','Ray Dolan','Semantic','MEG']}),block('sat-dinner',6,'17:30','18:30','Dinner','meal'),block('sat-recovery',6,'18:30','23:30','Light evening / recovery','recovery'),
     block('sun-cardio',0,'08:00','09:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('sun-admin',0,'10:00','11:00','Reimbursement + weekly admin','admin',true),block('sun-reading',0,'11:00','13:00','Prepare Monday scientific paper reading','focus',true,{projectMatch:['NEUR0002','Patrick','literature','paper']}),
     block('sun-lunch',0,'13:00','14:30','Lunch + optional nap','meal'),block('sun-patrick',0,'15:00','17:00','Patrick · NEUR0002 literature review','focus',true,{projectMatch:['NEUR0002','Patrick','Agency']}),block('sun-dinner',0,'18:00','19:00','Dinner','meal'),block('sun-review',0,'19:30','20:00','Weekly Review / Planning','admin',true),block('sun-recovery',0,'20:00','23:30','Free / recovery','recovery'),
   ]
 };
 
-export const WEEKLY_ROUTINE_VERSION=3;
-const UPDATED_ROUTINE_IDS=new Set(['wed-maze','thu-grocery','thu-semantic','thu-semantic-pm','thu-lunch','thu-choir','thu-dinner','thu-recovery']);
+export const WEEKLY_ROUTINE_VERSION=4;
+const UPDATED_ROUTINE_IDS=new Set(['tue-anika','wed-maze','thu-grocery','thu-semantic','thu-semantic-pm','thu-lunch','thu-choir','thu-dinner','thu-recovery','fri-anika']);
 const RETIRED_ROUTINE_IDS=new Set(['thu-maze','sun-maintenance']);
 const ROUTINE_UPDATES=new Map(DEFAULT_WEEKLY_ROUTINE.blocks.filter(item=>UPDATED_ROUTINE_IDS.has(item.id)).map(item=>[item.id,item]));
 export function migrateWeeklyRoutine(routine:WeeklyRoutine):WeeklyRoutine{

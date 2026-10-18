@@ -31,6 +31,16 @@ describe("weekly routine migration", () => {
     expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
   });
 
+  it("marks Anika downtime as interruptible cross-project time", () => {
+    const migrated = migrateWeeklyRoutine(previousRoutine);
+    for (const id of ["tue-anika", "fri-anika"]) {
+      const block = migrated.blocks.find((item) => item.id === id);
+      expect(block?.title).toContain("flexible project work");
+      expect(block?.note).toContain("roughly 2 hours");
+      expect(block?.note).toContain("no deep coding");
+    }
+  });
+
   it("keeps unrelated custom blocks", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.find((item) => item.id === "fri-custom")?.title).toBe("Keep me");
