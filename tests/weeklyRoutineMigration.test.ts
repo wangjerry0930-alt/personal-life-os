@@ -31,6 +31,26 @@ describe("weekly routine migration", () => {
     expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
   });
 
+  it("protects Monday evening for social time or recovery", () => {
+    const routineWithOldSociety = {
+      ...previousRoutine,
+      blocks: [
+        ...previousRoutine.blocks,
+        { id: "mon-society", day: 1, start: "18:00", end: "22:00", title: "Society", kind: "hard" as const, movable: false },
+      ],
+    };
+    const migrated = migrateWeeklyRoutine(routineWithOldSociety);
+    expect(migrated.blocks.some((item) => item.id === "mon-society")).toBe(false);
+    expect(migrated.blocks.find((item) => item.id === "mon-recovery")).toMatchObject({
+      day: 1,
+      start: "18:00",
+      end: "22:00",
+      title: "Free / social / recovery",
+      kind: "recovery",
+      movable: false,
+    });
+  });
+
   it("marks Anika downtime as interruptible cross-project time", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
     for (const id of ["tue-anika", "fri-anika"]) {
