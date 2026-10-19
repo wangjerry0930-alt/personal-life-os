@@ -31,23 +31,26 @@ describe("weekly routine migration", () => {
     expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
   });
 
-  it("protects Monday evening for social time or recovery", () => {
+  it("keeps Monday evening flexible for study, social time or recovery", () => {
     const routineWithOldSociety = {
       ...previousRoutine,
       blocks: [
         ...previousRoutine.blocks,
         { id: "mon-society", day: 1, start: "18:00", end: "22:00", title: "Society", kind: "hard" as const, movable: false },
+        { id: "mon-recovery", day: 1, start: "18:00", end: "22:00", title: "Free / social / recovery", kind: "recovery" as const, movable: false },
       ],
     };
     const migrated = migrateWeeklyRoutine(routineWithOldSociety);
     expect(migrated.blocks.some((item) => item.id === "mon-society")).toBe(false);
-    expect(migrated.blocks.find((item) => item.id === "mon-recovery")).toMatchObject({
+    expect(migrated.blocks.some((item) => item.id === "mon-recovery")).toBe(false);
+    expect(migrated.blocks.find((item) => item.id === "mon-flexible")).toMatchObject({
       day: 1,
       start: "18:00",
       end: "22:00",
-      title: "Free / social / recovery",
+      title: "Flexible · study / social / recovery",
       kind: "recovery",
       movable: false,
+      optional: true,
     });
   });
 

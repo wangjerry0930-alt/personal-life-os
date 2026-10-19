@@ -17,7 +17,7 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
     block('mon-strength',1,'07:00','08:30','Strength training','exercise',true,{note:'Allow 20 min shower afterwards'}),
     block('mon-tue-reading',1,'09:30','11:30','Prepare Tuesday scientific paper reading','focus',true,{projectMatch:['NEUR0002','Patrick','literature','paper']}),
     block('mon-lunch',1,'12:00','13:30','Lunch + optional nap','meal'),block('mon-commute',1,'13:45','14:00','Walk to class','hard'),block('mon-class',1,'14:00','16:00','Course','hard'),
-    block('mon-grocery',1,'16:00','17:00','Groceries · next 2–3 days','admin',true,{note:'Supermarket is about 7 min away'}),block('mon-dinner',1,'17:00','18:00','Dinner','meal'),block('mon-recovery',1,'18:00','22:00','Free / social / recovery','recovery'),
+    block('mon-grocery',1,'16:00','17:00','Groceries · next 2–3 days','admin',true,{note:'Supermarket is about 7 min away'}),block('mon-dinner',1,'17:00','18:00','Dinner','meal'),block('mon-flexible',1,'18:00','22:00','Flexible · study / social / recovery','recovery',false,{optional:true,note:'Choose based on energy and current priorities. Study can be scheduled here manually, but the planner should not auto-fill this evening.'}),
     block('tue-commute',2,'08:45','09:00','Walk to class','hard'),block('tue-class',2,'09:00','11:00','Course','hard'),block('tue-lunch',2,'11:30','12:45','Lunch + optional nap','meal'),
     block('tue-anika',2,'13:00','16:00','Anika experiment · flexible project work','focus',true,{projectMatch:['Anika','Metacognition'],note:'Two 90-minute participants: about 30 min guidance + 60 min flexible work each. Use roughly 2 hours total for interruptible reading, references, light analysis, email or follow-up from another project; no deep coding.'}),block('tue-dinner',2,'17:00','18:00','Dinner','meal'),block('tue-recovery',2,'18:00','23:30','Free / social / recovery','recovery'),
     block('wed-cardio',3,'07:00','08:15','Cardio','exercise',true,{note:'Allow 20 min shower afterwards'}),block('wed-maze',3,'08:45','10:30','Zhou Xiaoyu · Maze Reconstruction','deep',true,{projectMatch:['Zhou Xiaoyu','Maze','Reconstruction']}),block('wed-commute',3,'10:45','11:00','Walk to class','hard'),block('wed-class',3,'11:00','13:00','Course','hard'),
@@ -32,9 +32,9 @@ export const DEFAULT_WEEKLY_ROUTINE:WeeklyRoutine={
   ]
 };
 
-export const WEEKLY_ROUTINE_VERSION=5;
-const UPDATED_ROUTINE_IDS=new Set(['mon-recovery','tue-anika','wed-maze','thu-grocery','thu-semantic','thu-semantic-pm','thu-lunch','thu-choir','thu-dinner','thu-recovery','fri-anika']);
-const RETIRED_ROUTINE_IDS=new Set(['mon-society','thu-maze','sun-maintenance']);
+export const WEEKLY_ROUTINE_VERSION=6;
+const UPDATED_ROUTINE_IDS=new Set(['mon-flexible','tue-anika','wed-maze','thu-grocery','thu-semantic','thu-semantic-pm','thu-lunch','thu-choir','thu-dinner','thu-recovery','fri-anika']);
+const RETIRED_ROUTINE_IDS=new Set(['mon-society','mon-recovery','thu-maze','sun-maintenance']);
 const ROUTINE_UPDATES=new Map(DEFAULT_WEEKLY_ROUTINE.blocks.filter(item=>UPDATED_ROUTINE_IDS.has(item.id)).map(item=>[item.id,item]));
 export function migrateWeeklyRoutine(routine:WeeklyRoutine):WeeklyRoutine{
   const existing=new Map(routine.blocks.map(item=>[item.id,item]));
