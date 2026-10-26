@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Icon from './Icon';
-import MorningChecklist from './MorningChecklist';
+import MorningChecklist from './MorningChecklistV2';
 import DailyPlanPanel from './DailyPlanPanel';
 
 export default function FocusTimer() {
