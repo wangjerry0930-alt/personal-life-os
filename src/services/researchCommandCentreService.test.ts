@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seed } from '../domain/seed';
-import { exportResearchStatus, importResearchStatus, INITIAL_RESEARCH_WEEK_ID, integrateInitialResearchCommandCentre, updateResearchCheckpoint } from './researchCommandCentreService';
+import { allocateWeeklyPlanTasks, exportResearchStatus, importResearchStatus, INITIAL_RESEARCH_WEEK_ID, integrateInitialResearchCommandCentre, updateResearchCheckpoint } from './researchCommandCentreService';
 
 const clean=()=>({...seed,projects:[],tasks:[],researchWeeklyPlans:[]});
 
@@ -27,5 +27,12 @@ describe('Research Command Centre',()=>{
   it('persists checkpoint notes in the weekly plan',()=>{
     const data=integrateInitialResearchCommandCentre(clean());const updated=updateResearchCheckpoint(data,INITIAL_RESEARCH_WEEK_ID,'thursday','MEG split audit is at risk.');
     expect(updated.researchWeeklyPlans?.[0].checkpoints.thursday).toMatchObject({status:'reviewed',notes:'MEG split audit is at risk.'});
+  });
+
+  it('allocates weekly deliverables into daily routine blocks without overlap',()=>{
+    const initial=integrateInitialResearchCommandCentre(clean());const unscheduled={...initial,tasks:initial.tasks.map(task=>({...task,scheduledDate:undefined,scheduledStartTime:undefined,scheduledEndTime:undefined}))};const allocated=allocateWeeklyPlanTasks(unscheduled,INITIAL_RESEARCH_WEEK_ID,'2026-10-26');const scheduled=allocated.tasks.filter(task=>task.scheduledDate);
+    expect(scheduled).toHaveLength(initial.tasks.length);expect(scheduled.every(task=>task.scheduledDate!>='2026-10-26'&&task.scheduledDate!<='2026-11-01')).toBe(true);
+    for(const date of new Set(scheduled.map(task=>task.scheduledDate))){const day=scheduled.filter(task=>task.scheduledDate===date).sort((a,b)=>a.scheduledStartTime!.localeCompare(b.scheduledStartTime!));for(let index=1;index<day.length;index++)expect(day[index].scheduledStartTime!.localeCompare(day[index-1].scheduledEndTime!)).toBeGreaterThanOrEqual(0)}
+    const repeated=allocateWeeklyPlanTasks(allocated,INITIAL_RESEARCH_WEEK_ID,'2026-10-26');expect(repeated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime])).toEqual(allocated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime]));
   });
 });
