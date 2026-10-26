@@ -33,6 +33,6 @@ describe('Research Command Centre',()=>{
     const initial=integrateInitialResearchCommandCentre(clean());const unscheduled={...initial,tasks:initial.tasks.map(task=>({...task,scheduledDate:undefined,scheduledStartTime:undefined,scheduledEndTime:undefined}))};const allocated=allocateWeeklyPlanTasks(unscheduled,INITIAL_RESEARCH_WEEK_ID,'2026-10-26');const scheduled=allocated.tasks.filter(task=>task.scheduledDate);
     expect(scheduled).toHaveLength(initial.tasks.length);expect(scheduled.every(task=>task.scheduledDate!>='2026-10-26'&&task.scheduledDate!<='2026-11-01')).toBe(true);
     for(const date of new Set(scheduled.map(task=>task.scheduledDate))){const day=scheduled.filter(task=>task.scheduledDate===date).sort((a,b)=>a.scheduledStartTime!.localeCompare(b.scheduledStartTime!));for(let index=1;index<day.length;index++)expect(day[index].scheduledStartTime!.localeCompare(day[index-1].scheduledEndTime!)).toBeGreaterThanOrEqual(0)}
-    const repeated=allocateWeeklyPlanTasks(allocated,INITIAL_RESEARCH_WEEK_ID,'2026-10-26');expect(repeated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime])).toEqual(allocated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime]));
+    const repeated=allocateWeeklyPlanTasks(allocated,INITIAL_RESEARCH_WEEK_ID,'2026-10-26');expect(repeated).toBe(allocated);expect(repeated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime])).toEqual(allocated.tasks.map(task=>[task.id,task.scheduledDate,task.scheduledStartTime]));
   });
 });
