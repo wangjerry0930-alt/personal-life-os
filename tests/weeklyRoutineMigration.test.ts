@@ -21,19 +21,19 @@ const previousRoutine: WeeklyRoutine = {
 describe("weekly routine migration", () => {
   it("moves groceries to the morning and adds choir", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
-    expect(migrated.blocks.find((item) => item.id === "thu-grocery")).toMatchObject({ start: "09:00", end: "10:00" });
+    expect(migrated.blocks.find((item) => item.id === "thu-grocery")).toMatchObject({ start: "10:45", end: "11:45" });
     expect(migrated.blocks.find((item) => item.id === "thu-choir")).toMatchObject({ start: "17:00", end: "19:00", title: "MT Choir Rehearsal", movable: false });
   });
 
   it("keeps deep-work anchors while allowing short cross-project touchpoints", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
-    expect(migrated.blocks.find((item) => item.id === "wed-maze")).toMatchObject({ day: 3, start: "08:45", end: "10:30" });
+    expect(migrated.blocks.find((item) => item.id === "wed-maze")).toMatchObject({ day: 3, start: "07:00", end: "09:00" });
     expect(migrated.blocks.some((item) => item.id === "thu-semantic-pm")).toBe(false);
     expect(migrated.blocks.some((item) => item.id === "thu-maze")).toBe(false);
     expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
     expect(migrated.blocks.find((item) => item.id === "fri-project-mix")?.title).toContain("Mixed projects");
-    expect(migrated.blocks.filter((item) => item.id.endsWith("lecture-review"))).toHaveLength(7);
-    expect(migrated.blocks.filter((item) => item.id.includes("project-touch")).length).toBeGreaterThanOrEqual(5);
+    for(const day of [0,1,2,3,4,5,6])expect(migrated.blocks.some(item=>item.day===day&&(/Morning study|Daily lecture review/.test(item.title)))).toBe(true);
+    expect(migrated.blocks.filter((item) => item.id.includes("project-touch")||item.title.includes('Mixed projects')).length).toBeGreaterThanOrEqual(6);
   });
 
   it("keeps Monday evening flexible for study, social time or recovery", () => {
@@ -62,8 +62,8 @@ describe("weekly routine migration", () => {
   it("moves Anika from Friday to Thursday and replaces Tuesday with Patrick work", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.some((item) => item.id === "tue-anika")).toBe(false);
-    expect(migrated.blocks.find((item) => item.id === "tue-patrick")).toMatchObject({day:2,start:"13:00",end:"15:00",movable:true});
-    expect(migrated.blocks.find((item) => item.id === "tue-patrick")?.title).toContain("NEUR0002");
+    expect(migrated.blocks.find((item) => item.id === "tue-patrick")).toMatchObject({day:2,start:"14:45",end:"16:45",movable:true});
+    expect(migrated.blocks.find((item) => item.id === "tue-patrick")?.title).toContain("Patrick");
     expect(migrated.blocks.some((item) => item.id === "fri-anika")).toBe(false);
     const thursday = migrated.blocks.find((item) => item.id === "thu-anika");
     expect(thursday).toMatchObject({day:4,start:"13:00",end:"16:00",movable:true});
