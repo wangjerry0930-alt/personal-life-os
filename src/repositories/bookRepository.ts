@@ -1,5 +1,14 @@
 import type { Book } from '../domain/books';
+import type { BookChunk } from '../domain/bookParsing';
 import { storageAdapter } from './storageAdapter';
-const KEY='personal-life-os-books';
-export const loadBooks=():Book[]=>storageAdapter.get<Book[]>(KEY,[]);
-export const saveBooks=(books:Book[])=>storageAdapter.set(KEY,books);
+const KEY='personal-life-os-books',DB='personal-life-os-large-content',STORE='book-content';
+const openDb=()=>new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open(DB,1);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE)};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});
+const writeChunks=async(id:string,chunks:BookChunk[])=>{const db=await openDb();await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(chunks,id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)});db.close()};
+const readChunks=async(id:string)=>{const db=await openDb();const value=await new Promise<BookChunk[]>((resolve,reject)=>{const request=db.transaction(STORE).objectStore(STORE).get(id);request.onsuccess=()=>resolve(request.result||[]);request.onerror=()=>reject(request.error)});db.close();return value};
+const removeChunks=async(id:string)=>{const db=await openDb();await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)});db.close()};
+const pruneChunks=async(ids:Set<string>)=>{const db=await openDb(),keys=await new Promise<IDBValidKey[]>((resolve,reject)=>{const request=db.transaction(STORE).objectStore(STORE).getAllKeys();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close();await Promise.all(keys.filter(key=>!ids.has(String(key))).map(key=>removeChunks(String(key))))};
+const lightweight=(book:Book):Book=>({...book,bookChunks:undefined});
+export const loadBooks=():Book[]=>{const books=storageAdapter.get<Book[]>(KEY,[]);if(books.some(book=>book.bookChunks?.length))void saveBooks(books);return books};
+export const saveBooks=(books:Book[])=>{storageAdapter.set(KEY,books.map(lightweight));for(const book of books)if(book.bookChunks?.length)void writeChunks(book.id,book.bookChunks).catch(()=>undefined);void pruneChunks(new Set(books.map(book=>book.id))).catch(()=>undefined)};
+export const hydrateBooks=async(books:Book[])=>Promise.all(books.map(async book=>book.bookChunks?.length?book:{...book,bookChunks:await readChunks(book.id).catch(()=>[])}));
+export const deleteBookContent=(id:string)=>void removeChunks(id).catch(()=>undefined);
