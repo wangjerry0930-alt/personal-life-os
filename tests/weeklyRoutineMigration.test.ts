@@ -13,6 +13,7 @@ const previousRoutine: WeeklyRoutine = {
     { id: "thu-maze", day: 4, start: "14:00", end: "16:30", title: "Maze", kind: "deep", movable: true },
     { id: "sun-maintenance", day: 0, start: "17:00", end: "17:30", title: "Tal maintenance", kind: "light", movable: true },
     { id: "tue-anika", day: 2, start: "13:00", end: "16:00", title: "Anika experiment", kind: "focus", movable: true },
+    { id: "fri-anika", day: 5, start: "15:00", end: "18:00", title: "Anika experiment", kind: "focus", movable: true },
     { id: "fri-custom", day: 5, start: "09:00", end: "10:00", title: "Keep me", kind: "focus", movable: true },
   ],
 };
@@ -27,7 +28,7 @@ describe("weekly routine migration", () => {
   it("keeps each research day focused on one project", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.find((item) => item.id === "wed-maze")).toMatchObject({ day: 3, start: "08:45", end: "10:30" });
-    expect(migrated.blocks.find((item) => item.id === "thu-semantic-pm")?.title).toContain("Semantic Decoding");
+    expect(migrated.blocks.some((item) => item.id === "thu-semantic-pm")).toBe(false);
     expect(migrated.blocks.some((item) => item.id === "thu-maze")).toBe(false);
     expect(migrated.blocks.some((item) => item.id === "sun-maintenance")).toBe(false);
   });
@@ -55,15 +56,17 @@ describe("weekly routine migration", () => {
     });
   });
 
-  it("replaces Tuesday Anika with Patrick work and keeps Friday downtime flexible", () => {
+  it("moves Anika from Friday to Thursday and replaces Tuesday with Patrick work", () => {
     const migrated = migrateWeeklyRoutine(previousRoutine);
     expect(migrated.blocks.some((item) => item.id === "tue-anika")).toBe(false);
     expect(migrated.blocks.find((item) => item.id === "tue-patrick")).toMatchObject({day:2,start:"13:00",end:"16:00",movable:true});
     expect(migrated.blocks.find((item) => item.id === "tue-patrick")?.title).toContain("NEUR0002");
-    const friday = migrated.blocks.find((item) => item.id === "fri-anika");
-    expect(friday?.title).toContain("flexible project work");
-    expect(friday?.note).toContain("roughly 2 hours");
-    expect(friday?.note).toContain("no deep coding");
+    expect(migrated.blocks.some((item) => item.id === "fri-anika")).toBe(false);
+    const thursday = migrated.blocks.find((item) => item.id === "thu-anika");
+    expect(thursday).toMatchObject({day:4,start:"13:00",end:"16:00",movable:true});
+    expect(thursday?.title).toContain("flexible project work");
+    expect(thursday?.note).toContain("roughly 2 hours");
+    expect(thursday?.note).toContain("no deep coding");
   });
 
   it("keeps unrelated custom blocks", () => {
