@@ -38,6 +38,14 @@ export function persistRepositoryCollections(snapshot:RepositorySnapshot){
   if(snapshot.food!==undefined)storageAdapter.set('personal-life-os-food-v1',snapshot.food);
   if(snapshot.courseFiles!==undefined)storageAdapter.set('personal-life-os-course-files-v1',snapshot.courseFiles);
 }
+export function compactSnapshotForStorage(snapshot:RepositorySnapshot,has:(key:string)=>boolean=(key)=>storageAdapter.has(key)){
+  const external=(key:string,value:unknown,empty:unknown)=>has(key)?empty:value;
+  return{
+    ...snapshot,
+    people:external('personal-life-os-people',snapshot.people,[]),personFacts:external('personal-life-os-person-facts',snapshot.personFacts,[]),interactions:external('personal-life-os-conversations',snapshot.interactions,[]),importantDates:external('personal-life-os-important-dates',snapshot.importantDates,[]),books:external('personal-life-os-books',snapshot.books,[]),captures:external('personal-life-os-captures',snapshot.captures,[]),resources:external('personal-life-os-resources',snapshot.resources,[]),knowledgeItems:external('personal-life-os-knowledge',snapshot.knowledgeItems,[]),journalEntries:external('personal-life-os-journal-history',snapshot.journalEntries,[]),timeEntries:external('personal-life-os-time-entries',snapshot.timeEntries,[]) as TimeEntry[],questBoard:external('personal-life-os-quest-board-v1',snapshot.questBoard,undefined),questRefreshLedger:external('personal-life-os-quest-refresh-v1',snapshot.questRefreshLedger,undefined),food:external('personal-life-os-food-v1',snapshot.food,undefined),courseNames:external('personal-life-os-course-names-v1',snapshot.courseNames,[]),courseNotes:external('personal-life-os-course-notes-v1',snapshot.courseNotes,{}),
+    courseFiles:{},courseFurtherReading:{},updatedAt:new Date().toISOString(),
+  } as RepositorySnapshot;
+}
 export const saveSnapshot=(snapshot:RepositorySnapshot)=>{
   // Course documents already live under their dedicated storage key. Keeping
   // their base64 payloads in the main repository as well can exceed the
@@ -45,13 +53,14 @@ export const saveSnapshot=(snapshot:RepositorySnapshot)=>{
   if(!storageAdapter.has('personal-life-os-course-files-v1')&&snapshot.courseFiles){
     storageAdapter.set('personal-life-os-course-files-v1',snapshot.courseFiles);
   }
-  const compact={
-    ...snapshot,
-    courseFiles:{},
-    courseFurtherReading:{},
-    updatedAt:new Date().toISOString(),
-  };
-  storageAdapter.set(REPOSITORY_KEY,compact);
+  const compact=compactSnapshotForStorage(snapshot);
+  try{storageAdapter.set(REPOSITORY_KEY,compact)}catch(error){
+    // A failed replacement leaves the previous localStorage value intact.
+    // Do not crash app startup or discard in-memory data when the browser quota
+    // is already exhausted; dedicated collections can still be cleaned/exported.
+    if(error instanceof DOMException&&(error.name==='QuotaExceededError'||error.code===22)){console.warn('Life OS repository save paused: browser storage quota exceeded.');return}
+    throw error;
+  }
 };
 export function saveQuestState(questBoard:unknown,questRefreshLedger?:unknown){
   storageAdapter.set('personal-life-os-quest-board-v1',questBoard);
